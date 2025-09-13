@@ -1,5 +1,5 @@
 class CameraSensor:
-    def init(self, agent):
+    def __init__(self, agent):
         self.agent = agent
 
     def take_photo(self):

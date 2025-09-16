@@ -25,9 +25,9 @@ class Actuator: #this is what we are going to use to move the agent
         self.agent.image = image 
         
 
-    def update_position(self, angular_velocity: float, linear_velocity: float):
+    def update_position(self, angular_velocity: Vector2, linear_velocity: Vector2): # this should run at every step
         # Use simulator delta time to integrate motion
-        delta_time = getattr(self.agent.shared, "delta_time", 0.0)
+        delta_time = getattr(self.agent.shared, "delta_time", 0.0) # but then each delta time is equal to 1 step
 
         # Update position using current orientation vector `move`
         if linear_velocity:

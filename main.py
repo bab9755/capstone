@@ -31,6 +31,6 @@ for site in env["sites"]:
     .spawn_site("images/triangle.png", x=random.randint(0, x), y=random.randint(0, y))
     .spawn_site("images/triangle.png", x=random.randint(0, x), y=random.randint(0, y))
     .spawn_site("images/triangle.png", x=random.randint(0, x), y=random.randint(0, y))
-    .batch_spawn_agents(10, myAgent, images=["/Users/boubalkaly/Desktop/development/capstone/test-violet/images/green.png", "/Users/boubalkaly/Desktop/development/capstone/test-violet/images/red.png"])
+    .batch_spawn_agents(10, myAgent, images=["/Users/boubalkaly/Desktop/development/capstone/test-violet/images/walle.png", "/Users/boubalkaly/Desktop/development/capstone/test-violet/images/red.png"])
     .run()
 )

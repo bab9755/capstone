@@ -1,45 +1,13 @@
-import random
-from dataclasses import dataclass
-from typing import List
-
-@dataclass
-class WorldConfig:
-    width: int
-    height: int
+from vi import Agent, Config, Simulation, Window
 
 
-@dataclass
-class ItemSpec:
-    image: str
-    count: int
+class Environment(Simulation):
+    def __init__(self, config: Config):
+        super().__init__(config)
 
-@dataclass
-class Environment:
-    seed: int
-    world: WorldConfig
-    obstacles: List[ItemSpec]
-    sites: List[ItemSpec]
+    def _HeadlessSimulation_update_positions(self):
+        for sprite in self._agents.sprites():
+            agent: Agent = sprite
 
-
-def build_environment(cfg: Environment):
-
-    prng = random.Random(cfg.seed)
-    env = {"obstacles": [], "sites": []} #dict that holds all of our sites and obstacles
-
-    for spec in cfg.obstacles:
-        for _ in range(spec.count):
-            env["obstacles"].append({
-                "image": spec.image,
-                "x": prng.randint(0, cfg.world.width),
-                "y": prng.randint(0, cfg.world.height),
-            })
-
-    for spec in cfg.sites:
-        for _ in range(spec.count):
-            env["sites"].append({
-                "image": spec.image,
-                "x": prng.randint(0, cfg.world.width),
-                "y": prng.randint(0, cfg.world.height),
-            })
-
-    return env
+            linear_speed, angular_velocity = agent.get_velocities()
+            agent.actuator.update_position(linear_speed, angular_velocity)

@@ -1,7 +1,7 @@
 from vi import Agent, Config, Simulation, Window
 from vi.util import count
 import random
-from environment import build_environment, Environment, ItemSpec, WorldConfig
+from world import build_environment, Environment, ItemSpec, WorldConfig
 class myAgent(Agent):
     def update(self) -> None:
         self.check_obstacle()

@@ -28,7 +28,7 @@ class knowledgeAgent(Agent):
         angular_velocity = 0
 
         if self.sensor.border_collision(): # if the agent is on the edge of the world, it randomly changes its angular velocity
-            angular_velocity = random.uniform(-1, 1)
+            angular_velocity = 10
 
         return linear_speed, angular_velocity
 

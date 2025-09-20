@@ -2,6 +2,7 @@ from vi.util import Vector2
 from vi.simulation import Shared
 from constants import WIDTH, HEIGHT
 import random
+import pygame as pg
 class Sensor:
 
     def __init__(self, agent):
@@ -13,6 +14,36 @@ class Sensor:
         if pos.x < 0 or pos.x > WIDTH or pos.y < 0 or pos.y > HEIGHT:
             return True
         return False
+
+    def check_neighbors(self):
+        current_time = pg.time.get_ticks()
+
+        #before any processing, if an agent has been seen for more than 5 ticks, we can remove it from the seen_agents set
+        # Create a copy of the set to iterate over to avoid "Set changed size during iteration" error
+        
+        agents_to_remove = set()
+        for agent in self.agent.seen_agents:
+            if current_time - self.agent.seen_agents_time[agent] > 500:
+                agents_to_remove.add(agent)
+                print(f"Agent {self.agent.id} has not been seen for more than 500 ticks, removing it from the seen_agents set")
+        
+        for agent in agents_to_remove:
+            self.agent.seen_agents.remove(agent)
+            self.agent.seen_agents_time.pop(agent)
+
+        nearby_agents = list(self.agent.in_proximity_performance())
+        current_agent_ids = {agent.id for agent in nearby_agents}
+        
+        new_agents = current_agent_ids - self.agent.seen_agents
+        
+        if new_agents:
+            new_agent_objects = [agent for agent in nearby_agents if agent.id in new_agents]
+            print(f"Agent {self.agent.id} is in proximity with NEW agents: {[agent.id for agent in new_agent_objects]}")
+            self.agent.seen_agents.update(new_agents)
+            for agent in new_agents:
+                self.agent.seen_agents_time[agent] = current_time
+
+
 
 
 

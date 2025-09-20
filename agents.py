@@ -4,6 +4,7 @@ from context import Context
 from sensors import Sensor, Actuator
 import random
 from constants import WIDTH, HEIGHT
+import pygame as pg
 class knowledgeAgent(Agent):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -13,7 +14,8 @@ class knowledgeAgent(Agent):
         self.llm = LLM(self) 
         self.context = Context(self)
 
-        self.seen_agents = set() 
+        self.seen_agents = set()
+        self.seen_agents_time = {} #map seen agents to the last time they were seen
 
         self.pos.x = random.uniform(0, WIDTH)
         self.pos.y = random.uniform(0, HEIGHT)
@@ -21,15 +23,8 @@ class knowledgeAgent(Agent):
 
     def update(self): # at every tick (timestep), this function will be run
         # State machine for proximity interactions
-        nearby_agents = list(self.in_proximity_performance())
-        current_agent_ids = {agent.id for agent in nearby_agents}
-        
-        new_agents = current_agent_ids - self.seen_agents
-        
-        if new_agents:
-            new_agent_objects = [agent for agent in nearby_agents if agent.id in new_agents]
-            print(f"Agent {self.id} is in proximity with NEW agents: {[agent.id for agent in new_agent_objects]}")
-            self.seen_agents.update(new_agents)
+
+        self.sensor.check_neighbors()
             
 
     def exchange_context_with_agents(self, agents):

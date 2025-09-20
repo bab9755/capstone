@@ -25,10 +25,11 @@ class knowledgeAgent(Agent):
     def get_velocities(self): 
         # at the start of the simulation this is what we get
         linear_speed = 2
-        angular_velocity = 0
+        angular_velocity = 0.0
 
         if self.sensor.border_collision(): # if the agent is on the edge of the world, it randomly changes its angular velocity
             angular_velocity = 10
+            linear_speed = 2
 
         return linear_speed, angular_velocity
 

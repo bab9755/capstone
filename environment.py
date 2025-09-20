@@ -2,10 +2,10 @@ from vi import Agent, Config, Simulation, Window
 
 
 class Environment(Simulation):
-    def __init__(self, config: Config):
+    def __init__(self, config = None):
         super().__init__(config)
 
-    def _HeadlessSimulation_update_positions(self):
+    def _HeadlessSimulation__update_positions(self):
         for sprite in self._agents.sprites():
             agent: Agent = sprite
 

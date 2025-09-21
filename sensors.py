@@ -19,7 +19,7 @@ class Sensor:
         current_time = pg.time.get_ticks()
 
         #before any processing, if an agent has been seen for more than 5 ticks, we can remove it from the seen_agents set
-        # Create a copy of the set to iterate over to avoid "Set changed size during iteration" error
+        # this is how we handle our unseen -> seen -> unseen cycle
         
         agents_to_remove = set()
         for agent in self.agent.seen_agents:
@@ -43,8 +43,14 @@ class Sensor:
             for agent in new_agents:
                 self.agent.seen_agents_time[agent] = current_time
 
+            return new_agent_objects
 
 
+    def exchange_context_with_agents(self, new_agent_objects):
+        for agent in new_agent_objects:
+            if self.agent._Agent__simulation.communication_manager.has_exchanged(self.agent.id, agent.id):
+                continue
+            self.agent._Agent__simulation.communication_manager.register_exchange(self.agent.id, agent.id, pg.time.get_ticks())
 
 
 class Actuator: #this is what we are going to use to move the agent

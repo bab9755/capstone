@@ -24,7 +24,11 @@ class knowledgeAgent(Agent):
     def update(self): # at every tick (timestep), this function will be run
         # State machine for proximity interactions
 
-        self.sensor.check_neighbors()
+        # this checks all the neighbors and updates the seen_agents set
+        agents = self.sensor.check_neighbors()
+        if agents:
+
+            self.sensor.exchange_context_with_agents(agents)
             
 
     def exchange_context_with_agents(self, agents):

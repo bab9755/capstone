@@ -3,9 +3,11 @@ import json
 import requests
 from dotenv import load_dotenv
 load_dotenv()
+from concurrent.futures import ThreadPoolExecutor, Future, as_completed
+import uuid
 
 class LLM:
-    def __init__(self, Agent):
+    def __init__(self, agent):
         self.agent = agent
         self.provider = os.getenv("LLM_PROVIDER", "openai").lower()
         self.model = os.getenv("LLM_MODEL", "gpt-4o-mini")
@@ -16,6 +18,14 @@ class LLM:
 
         # Auth (OpenAI)
         self.openai_api_key = os.getenv("OPENAI_API_KEY", "")
+
+        global _LLM_EXECUTOR
+        if "_LLM_EXECUTOR" not in globals() or _LLM_EXECUTOR is None:
+            max_workers = int(os.getenv("LLM_MAX_WORKERS", "4"))
+            _LLM_EXECUTOR = ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="llm")
+
+        self._executor = _LLM_EXECUTOR
+        self._futures: dict[str, Future] = {}
 
     def generate_response(self, prompt: str) -> str:
         if self.provider == "ollama":
@@ -47,10 +57,11 @@ class LLM:
         payload = {
             "model": self.model,
             "messages": [
-                {"role": "system", "content": "You are a helpful assistant for a 2D agent simulation."},
+                {"role": "system", "content": "You are a helpful assistant for a 2D agent simulation. Help me summarize the payload that I am giving you consizely and in a way that is easy to understand."},
                 {"role": "user", "content": prompt},
             ],
             "stream": False,
+            "max_tokens": 150,
         }
 
         resp = requests.post(url, json=payload, timeout=60)
@@ -63,5 +74,31 @@ class LLM:
             return data["choices"][0]["message"]["content"]
         return str(data)
 
-llm = LLM()
-print(llm.generate_response("How are you doing today?"))
+    def submit(self, prompt: str) -> str:
+        task_id = uuid.uuid4().hex
+        if self.provider == "ollama":
+            future = self._executor.submit(self._ollama_chat, prompt)
+        else:
+            future = self._executor.submit(self._openai_chat, prompt)
+        self._futures[task_id] = future
+        return task_id
+
+    def poll(self) -> list[tuple[str, str]]:
+        completed: list[tuple[str, str]] = []
+        to_remove: list[str] = []
+        for task_id, fut in list(self._futures.items()):
+            if fut.done():
+                try:
+                    result = fut.result()
+                except Exception as exc: 
+                    result = f"LLM error: {exc}"
+                completed.append((task_id, result))
+                to_remove.append(task_id)
+        for task_id in to_remove:
+            self._futures.pop(task_id, None)
+        return completed
+
+    def cancel_all(self) -> None:
+        for fut in self._futures.values():
+            fut.cancel()
+        self._futures.clear()

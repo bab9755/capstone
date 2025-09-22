@@ -5,6 +5,7 @@ from sensors import Sensor, Actuator
 import random
 from constants import WIDTH, HEIGHT
 import pygame as pg
+from collections import deque
 class knowledgeAgent(Agent):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -12,7 +13,8 @@ class knowledgeAgent(Agent):
         self.sensor = Sensor(self) # for global coordinate access
         self.actuator = Actuator(self) # for local coordinate access
         self.llm = LLM(self) 
-        self.context = Context(self)
+        self.context = ["This is the initial context of agent " + str(self.id)] # list of context objects
+        self.message_queue = deque()
 
         self.seen_agents = set()
         self.seen_agents_time = {} #map seen agents to the last time they were seen
@@ -30,19 +32,17 @@ class knowledgeAgent(Agent):
 
             self.sensor.exchange_context_with_agents(agents)
             
-
-    def exchange_context_with_agents(self, agents):
-        """Exchange context with newly encountered agents"""
-        for agent in agents:
-            # Add context about this interaction
-            self.context.add_context()
-            print(f"Agent {self.id} exchanged context with Agent {agent.id}")
     
     def reset_proximity_state(self):
         """Reset the proximity state (useful for testing or new scenarios)"""
         self.seen_agents.clear()
         self.current_proximity_agents.clear()
         print(f"Agent {self.id} reset proximity state")
+
+    def add_context(self, context: list):
+        for c in context:
+            self.context.append(c)
+        print(f"Agent {self.id} got new context context: {context}")
 
     def get_velocities(self): 
         # at the start of the simulation this is what we get

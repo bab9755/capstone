@@ -14,10 +14,11 @@ class knowledgeAgent(Agent):
         self.actuator = Actuator(self) # for local coordinate access
         self.llm = LLM(self) 
         self.context = ["This is the initial context of agent " + str(self.id)] # list of context objects
-        self.message_queue = deque()
+        self.message_queue = deque() 
+        self.pending_llm_tasks = {}  
 
         self.seen_agents = set()
-        self.seen_agents_time = {} #map seen agents to the last time they were seen
+        self.seen_agents_time = {} 
 
         self.pos.x = random.uniform(0, WIDTH)
         self.pos.y = random.uniform(0, HEIGHT)
@@ -31,6 +32,14 @@ class knowledgeAgent(Agent):
         if agents:
 
             self.sensor.exchange_context_with_agents(agents)
+
+        # Process completed LLM tasks without blocking the sim loop
+        for task_id, result in self.llm.poll():
+            idx = self.pending_llm_tasks.pop(task_id, None)
+            if idx is not None:
+                # Replace placeholder with actual result
+                self.context[idx] = result
+                print(f"Agent {self.id} LLM summary ready")
             
     
     def reset_proximity_state(self):
@@ -39,10 +48,15 @@ class knowledgeAgent(Agent):
         self.current_proximity_agents.clear()
         print(f"Agent {self.id} reset proximity state")
 
-    def add_context(self, context: list):
-        for c in context:
-            self.context.append(c)
-        print(f"Agent {self.id} got new context context: {context}")
+    def add_context(self, context: str):
+        # Enqueue an async LLM summary request; append placeholder immediately
+        context_str = context
+        context_to_process = context_str + "\n" + self.context[-1]
+        self.context.append("[summarizing…]")
+        placeholder_index = len(self.context) - 1
+        task_id = self.llm.submit(context_to_process)
+        self.pending_llm_tasks[task_id] = placeholder_index
+        print(f"Agent {self.id} queued LLM summarization task {task_id}")
 
     def get_velocities(self): 
         # at the start of the simulation this is what we get

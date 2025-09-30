@@ -16,6 +16,7 @@ class Sensor:
             return True
         return False
 
+#TODO use a finite state machine with switch cases between ALONE -> NOT_ALONE
     def check_neighbors(self):
         current_time = pg.time.get_ticks()
 
@@ -27,7 +28,7 @@ class Sensor:
             if current_time - self.agent.seen_agents_time[agent] > 500:
                 agents_to_remove.add(agent)
                 print(f"Agent {self.agent.id} has not been seen for more than 500 ticks, removing it from the seen_agents set")
-        
+        #
         for agent in agents_to_remove:
             self.agent.seen_agents.remove(agent)
             self.agent.seen_agents_time.pop(agent)
@@ -49,15 +50,9 @@ class Sensor:
 
     def exchange_context_with_agents(self, new_agent_objects):
         for agent in new_agent_objects:
-            if self.agent._Agent__simulation.communication_manager.has_exchanged(self.agent.id, agent.id):
-                continue
-            self.agent._Agent__simulation.communication_manager.register_exchange(self.agent.id, agent.id, pg.time.get_ticks())
 
-            agent1_context = self.agent.context[-1]
-            agent2_context = agent.context[-1]
+            agent.add_context(self.agent.context[-1])
 
-            agent.add_context(agent1_context)
-            self.agent.add_context(agent2_context)
 
 
 class Actuator: #this is what we are going to use to move the agent

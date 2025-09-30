@@ -23,24 +23,45 @@ class knowledgeAgent(Agent):
         self.pos.x = random.uniform(0, WIDTH)
         self.pos.y = random.uniform(0, HEIGHT)
 
+        self.surrounding_state = "ALONE" # this is to track the state when the agent is surrounded by other ones or not
+        self.object_state = "NONE"
+
 
     def update(self): # at every tick (timestep), this function will be run
-        # State machine for proximity interactions
 
-        # this checks all the neighbors and updates the seen_agents set
-        agents = self.sensor.check_neighbors()
-        if agents:
+        neighbors = list(self.in_proximity_performance())
+        number_of_neighbors = len(neighbors)
+        is_on_site = self.on_site()
 
-            self.sensor.exchange_context_with_agents(agents)
+        #finite state machine for surrounding state
+        match self.surrounding_state:
+            case "ALONE":
+                if number_of_neighbors > 0:
+                    # here we will exchange information
+                    self.sensor.exchange_context_with_agents(neighbors)
+                    self.surrounding_state = "NOT_ALONE"
+                    print(f"Agent {self.id} is now in the state NOT_ALONE")
+            case "NOT_ALONE":
+                if number_of_neighbors == 0:
+                    self.surrounding_state = "ALONE"
 
-        # Process completed LLM tasks without blocking the sim loop
+        #finite state machine for object state
+        match self.object_state:
+            case "NONE":
+                if is_on_site:
+                    self.object_state = "ON_SITE"
+            case "ON_SITE":
+                if not is_on_site:
+                    self.object_state = "NONE"
+
         for task_id, result in self.llm.poll():
             idx = self.pending_llm_tasks.pop(task_id, None)
             if idx is not None:
-                # Replace placeholder with actual result
                 self.context[idx] = result
                 print(f"Agent {self.id} LLM summary ready")
-            
+                print(result)
+        
+        
     
     def reset_proximity_state(self):
         """Reset the proximity state (useful for testing or new scenarios)"""

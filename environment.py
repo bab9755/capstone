@@ -12,3 +12,7 @@ class Environment(Simulation):
 
             linear_speed, angular_velocity = agent.get_velocities()
             agent.actuator.update_position(linear_speed, angular_velocity)
+
+    def print_agents_context(self):
+        for agent in self._agents:
+            print(f"Agent {agent.id} context: {agent.context}")

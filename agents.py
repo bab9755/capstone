@@ -6,6 +6,7 @@ import random
 from constants import WIDTH, HEIGHT
 import pygame as pg
 from collections import deque
+from story_registry import story_registry
 class knowledgeAgent(Agent):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -13,10 +14,10 @@ class knowledgeAgent(Agent):
         self.sensor = Sensor(self) # for global coordinate access
         self.actuator = Actuator(self) # for local coordinate access
         self.llm = LLM(self) 
-        self.context = ["This is the initial context of agent " + str(self.id)] # list of context objects
+        self.context = [] # list of context objects
         self.message_queue = deque() 
         self.pending_llm_tasks = {}  
-
+        self.type = "SWARM"
         self.seen_agents = set()
         self.seen_agents_time = {} 
 
@@ -25,6 +26,8 @@ class knowledgeAgent(Agent):
 
         self.surrounding_state = "ALONE" # this is to track the state when the agent is surrounded by other ones or not
         self.object_state = "NONE"
+        # story discovery tracking
+        self.discovered_stories = set()
 
 
     def update(self): # at every tick (timestep), this function will be run
@@ -50,6 +53,7 @@ class knowledgeAgent(Agent):
             case "NONE":
                 if is_on_site:
                     self.object_state = "ON_SITE"
+                    self.discover_story_information()
             case "ON_SITE":
                 if not is_on_site:
                     self.object_state = "NONE"
@@ -68,6 +72,14 @@ class knowledgeAgent(Agent):
         self.seen_agents.clear()
         self.current_proximity_agents.clear()
         print(f"Agent {self.id} reset proximity state")
+
+    def discover_story_information(self):
+        """Discover story information when entering a site area and add to context."""
+        info = story_registry.get_info_at_position(self.pos.x, self.pos.y)
+        if not info or info in self.discovered_stories:
+            return
+        self.discovered_stories.add(info)
+        self.add_context(f"DISCOVERY: {info}")
 
     def add_context(self, context: str):
         # Enqueue an async LLM summary request; append placeholder immediately
@@ -96,3 +108,25 @@ class knowledgeAgent(Agent):
 
 
     
+class Villager(Agent):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.sensor = Sensor(self) # for global coordinate access
+        self.actuator = Actuator(self) # for local coordinate access
+        self.llm = LLM(self) 
+        self.context = context
+        self.message_queue = deque() 
+        self.pending_llm_tasks = {}  
+        self.type = "ENV"
+
+        self.seen_agents = set()
+        self.seen_agents_time = {} 
+
+        self.pos.x = random.uniform(0, WIDTH)
+        self.pos.y = random.uniform(0, HEIGHT)
+
+    def update(self):
+        pass
+
+    def get_velocities(self):
+        return 0, 0

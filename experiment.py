@@ -1,5 +1,6 @@
 from agents import knowledgeAgent, Villager
 from vi import Config, Simulation, Window
+from subjects import SubjectAgent
 from environment import Environment
 from constants import WIDTH, HEIGHT
 from story_registry import create_story_environment, story_registry
@@ -11,7 +12,7 @@ def run_eldoria_mystery():
     print("📖 They must piece together the story of the Lost Artifact!")
     print("=" * 60)
     
-    # Create the story environment with sites and registry
+    # Create the story environment with sites and registry (kept for summary/stats)
     story_sites = create_story_environment(WIDTH, HEIGHT, seed=3)
     
     # Create simulation
@@ -19,14 +20,27 @@ def run_eldoria_mystery():
     simulation = Environment(config)
     
     # Spawn 3 knowledge agents (robots) to investigate
-    simulation.batch_spawn_agents(3, knowledgeAgent, images=["images/robot.png"])
-    # simulation.batch_spawn_agents(10, Villager, images=["images/villager.png"])
-    # Spawn all story sites
-    for site in story_sites:
-        simulation.spawn_site(site["sprite"], x=site["x"], y=site["y"])
+    simulation.batch_spawn_agents(2, knowledgeAgent, images=["images/robot.png"])
+
+    # Spawn 5 subject agents with a small split story
+    fragments = [
+        "A strange signal echoed at dawn...",
+        "Villagers saw lights above the mill...",
+        "Scorch marks formed a perfect ring...",
+        "A fragment hummed near the well...",
+        "Coordinates etched on stone pointed north."
+    ]
+    # Spawn one-by-one and assign fragment to each newly spawned subject
+    for fragment in fragments:
+        simulation.batch_spawn_agents(1, SubjectAgent, images=["images/villager.png"])  # returns Simulation (chainable)
+        # Grab the latest subject agent and assign its info
+        subjects = [a for a in simulation._agents if getattr(a, "role", None) == "SUBJECT"]
+        if subjects:
+            subjects[-1].info = fragment
+
     
     print(f"✅ Environment created with {len(story_sites)} story sites")
-    print(f"🤖 {3} investigation robots deployed")
+    print(f"🤖 {2} investigation robots deployed")
     print("🚀 Starting simulation...")
     print("=" * 60)
     

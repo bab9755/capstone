@@ -17,10 +17,7 @@ class knowledgeAgent(Agent):
         self.context = [] # list of context objects
         self.message_queue = deque() 
         self.pending_llm_tasks = {}  
-        self.type = "SWARM"
-        self.seen_agents = set()
-        self.seen_agents_time = {} 
-
+        self.role = "KNOWLEDGE_AGENT"
         self.pos.x = random.uniform(0, WIDTH)
         self.pos.y = random.uniform(0, HEIGHT)
 
@@ -33,8 +30,10 @@ class knowledgeAgent(Agent):
     def update(self): # at every tick (timestep), this function will be run
 
         neighbors = list(self.in_proximity_performance())
-        number_of_neighbors = len(neighbors)
-        is_on_site = self.on_site()
+        subjects = [agent for agent in neighbors if agent.role == "SUBJECT"]
+        agents = [agent for agent in neighbors if agent.role == "KNOWLEDGE_AGENT"]
+        number_of_neighbors = len(agents)
+        number_of_subjects = len(subjects)
 
         #finite state machine for surrounding state
         match self.surrounding_state:
@@ -51,11 +50,13 @@ class knowledgeAgent(Agent):
         #finite state machine for object state
         match self.object_state:
             case "NONE":
-                if is_on_site:
+                if number_of_subjects > 0:
+                    print("Encountered a site")
+                    self.sensor.collect_information_from_subjects(subjects)
                     self.object_state = "ON_SITE"
-                    self.discover_story_information()
+                    
             case "ON_SITE":
-                if not is_on_site:
+                if number_of_subjects == 0:
                     self.object_state = "NONE"
 
         for task_id, result in self.llm.poll():
@@ -77,6 +78,7 @@ class knowledgeAgent(Agent):
         """Discover story information when entering a site area and add to context."""
         info = story_registry.get_info_at_position(self.pos.x, self.pos.y)
         if not info or info in self.discovered_stories:
+            print("Did not discover story information")
             return
         self.discovered_stories.add(info)
         self.add_context(f"DISCOVERY: {info}")
@@ -84,7 +86,7 @@ class knowledgeAgent(Agent):
     def add_context(self, context: str):
         # Enqueue an async LLM summary request; append placeholder immediately
         context_str = context
-        context_to_process = context_str + "\n" + self.context[-1]
+        context_to_process = context_str + "\n" + self.context[-1] if self.context else context_str
         self.context.append("[summarizing…]")
         placeholder_index = len(self.context) - 1
         task_id = self.llm.submit(context_to_process)

@@ -50,14 +50,14 @@ class Sensor:
 
     def exchange_context_with_agents(self, new_agent_objects):
         for agent in new_agent_objects:
-            if len(self.agent.context) > 0: #first check that the agent has context to exchange
-                agent.add_context(self.agent.context[-1])
+            self.agent.t_received.append(agent.t_summary)
+            agent.t_received.append(self.agent.t_summary)
 
 
     def collect_information_from_subjects(self, new_agent_objects):
         for agent in new_agent_objects:
             if agent.role == "SUBJECT":
-                self.agent.add_context(agent.info)
+                self.agent.p.append(agent.info)
 
 class Actuator: #this is what we are going to use to move the agent
 

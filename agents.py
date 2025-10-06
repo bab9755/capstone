@@ -25,6 +25,14 @@ class knowledgeAgent(Agent):
         self.object_state = "NONE"
         # story discovery tracking
         self.discovered_stories = set()
+        
+        # Timer for periodic LLM summarization (every 20 seconds = 20,000ms)
+        self.last_summary_time = pg.time.get_ticks()
+        self.summary_interval = 20000  # 20 seconds in milliseconds
+
+        self.p = deque(maxlen=1)
+        self.t_summary = deque(maxlen=1)
+        self.t_received = deque(maxlen=1)
 
 
     def update(self): # at every tick (timestep), this function will be run
@@ -59,15 +67,22 @@ class knowledgeAgent(Agent):
                 if number_of_subjects == 0:
                     self.object_state = "NONE"
 
-        for task_id, result in self.llm.poll():
-            idx = self.pending_llm_tasks.pop(task_id, None)
-            if idx is not None:
-                self.context[idx] = result
-                print(f"Agent {self.id} LLM summary ready")
-                print(result)
+        # Check if it's time for periodic summarization (every 20 seconds)
+        current_time = pg.time.get_ticks()
+        if current_time - self.last_summary_time >= self.summary_interval:
+            self.run_periodic_summarization()
+            self.last_summary_time = current_time
         
         
     
+    def run_periodic_summarization(self):
+        prompt = f"You are a helpful assistant for a 2D agent simulation. Help me summarize the payload that I am giving you consizely and in a way that is easy to understand. \n\n p: {self.p} \n\n t_summary: {self.t_summary} \n\n t_received: {self.t_received}. Only return the summary, no other text."
+        self.llm.submit(prompt)
+        self.t_summary.append(self.llm.poll())
+        self.p.clear()
+        self.t_received.clear()
+        print(f"Agent {self.id} ran periodic summarization at {pg.time.get_ticks()}ms")
+
     def reset_proximity_state(self):
         """Reset the proximity state (useful for testing or new scenarios)"""
         self.seen_agents.clear()

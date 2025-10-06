@@ -76,12 +76,22 @@ class knowledgeAgent(Agent):
         
     
     def run_periodic_summarization(self):
-        prompt = f"You are a helpful assistant for a 2D agent simulation. Help me summarize the payload that I am giving you consizely and in a way that is easy to understand. \n\n p: {self.p} \n\n t_summary: {self.t_summary} \n\n t_received: {self.t_received}. Only return the summary, no other text."
-        self.llm.submit(prompt)
-        self.t_summary.append(self.llm.poll())
-        self.p.clear()
-        self.t_received.clear()
-        print(f"Agent {self.id} ran periodic summarization at {pg.time.get_ticks()}ms")
+        """Run the LLM summarization chunk every 20 seconds"""
+        # Only run if we have data to summarize
+        if len(self.p) > 0 and len(self.t_summary) > 0 and len(self.t_received) > 0:
+            prompt = f"You are a helpful assistant for a 2D agent simulation. Help me summarize the payload that I am giving you consizely and in a way that is easy to understand. \n\n p: {self.p} \n\n t_summary: {self.t_summary} \n\n t_received: {self.t_received}. Only return the summary, no other text."
+            task_id = self.llm.submit(prompt)
+            
+            # Poll for results and handle them properly
+            completed_tasks = self.llm.poll()
+            for task_id_result, result in completed_tasks:
+                if task_id_result == task_id:  # This is our task
+                    self.t_summary.append(result)
+                    break
+            
+            self.p.clear()
+            self.t_received.clear()
+            print(f"Agent {self.id} ran periodic summarization at {pg.time.get_ticks()}ms")
 
     def reset_proximity_state(self):
         """Reset the proximity state (useful for testing or new scenarios)"""

@@ -33,6 +33,7 @@ class knowledgeAgent(Agent):
         self.p = deque(maxlen=1)
         self.t_summary = deque(maxlen=1)
         self.t_received = deque(maxlen=1)
+        self._pending_summary_task_id = None
 
 
     def update(self): # at every tick (timestep), this function will be run
@@ -67,6 +68,14 @@ class knowledgeAgent(Agent):
                 if number_of_subjects == 0:
                     self.object_state = "NONE"
 
+        # Process any completed LLM tasks
+        for task_id_result, result in self.llm.poll():
+            # Periodic summarization completion
+            if self._pending_summary_task_id and task_id_result == self._pending_summary_task_id:
+                print(f"Agent {self.id} received LLM summary: {result}")
+                self.t_summary.append(result)
+                self._pending_summary_task_id = None
+
         # Check if it's time for periodic summarization (every 20 seconds)
         current_time = pg.time.get_ticks()
         if current_time - self.last_summary_time >= self.summary_interval:
@@ -77,21 +86,19 @@ class knowledgeAgent(Agent):
     
     def run_periodic_summarization(self):
         """Run the LLM summarization chunk every 20 seconds"""
-        # Only run if we have data to summarize
-        if len(self.p) > 0 and len(self.t_summary) > 0 and len(self.t_received) > 0:
-            prompt = f"You are a helpful assistant for a 2D agent simulation. Help me summarize the payload that I am giving you consizely and in a way that is easy to understand. \n\n p: {self.p} \n\n t_summary: {self.t_summary} \n\n t_received: {self.t_received}. Only return the summary, no other text."
-            task_id = self.llm.submit(prompt)
-            
-            # Poll for results and handle them properly
-            completed_tasks = self.llm.poll()
-            for task_id_result, result in completed_tasks:
-                if task_id_result == task_id:  # This is our task
-                    self.t_summary.append(result)
-                    break
-            
-            self.p.clear()
-            self.t_received.clear()
-            print(f"Agent {self.id} ran periodic summarization at {pg.time.get_ticks()}ms")
+        # Avoid overlapping tasks
+        if self._pending_summary_task_id is not None:
+            return
+        # Only run if there is something to summarize
+        print("Running periodic summarization")
+        print(f"Agent {self.id} is sending the following payload to the LLM: {list(self.p)} {list(self.t_summary)} {list(self.t_received)}")
+        prompt = (
+            f"You are a helpful assistant for a 2D agent simulation. Help me summarize the payload that I am giving you consizely and in a way that is easy to understand. "
+            f"\n\n p: {list(self.p)} \n\n t_summary: {list(self.t_summary)} \n\n t_received: {list(self.t_received)}. Only return the summary, no other text."
+        )
+        self._pending_summary_task_id = self.llm.submit(prompt)
+        # Clear inputs for next window
+        print(f"Agent {self.id} scheduled periodic summarization at {pg.time.get_ticks()}ms")
 
     def reset_proximity_state(self):
         """Reset the proximity state (useful for testing or new scenarios)"""

@@ -50,8 +50,13 @@ class Sensor:
 
     def exchange_context_with_agents(self, new_agent_objects):
         for agent in new_agent_objects:
-            self.agent.t_received.append(agent.t_summary)
-            agent.t_received.append(self.agent.t_summary)
+            # Share only the latest summary string, not the entire deque
+            latest_from_other = agent.t_summary[-1] if len(agent.t_summary) > 0 else ""
+            latest_from_self = self.agent.t_summary[-1] if len(self.agent.t_summary) > 0 else ""
+            if latest_from_other:
+                self.agent.t_received.append(latest_from_other)
+            if latest_from_self:
+                agent.t_received.append(latest_from_self)
 
 
     def collect_information_from_subjects(self, new_agent_objects):

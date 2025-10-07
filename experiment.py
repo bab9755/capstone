@@ -24,11 +24,11 @@ def run_eldoria_mystery():
 
     # Spawn 5 subject agents with a small split story
     fragments = [
-        "A strange signal echoed at dawn...",
-        "Villagers saw lights above the mill...",
-        "Scorch marks formed a perfect ring...",
-        "A fragment hummed near the well...",
-        "Coordinates etched on stone pointed north."
+        "A strange signal echoed at dawn, a low, resonant hum that seemed to vibrate through the very stones of Eldoria, causing the livestock to stir uneasily and the village elders to exchange worried glances.",
+        "Villagers saw lights above the old mill, not the steady glow of lanterns, but erratic, pulsating beams of an unnatural blue, casting long, dancing shadows that seemed to twist and writhe on the ancient wooden walls.",
+        "Scorch marks formed a perfect, inexplicable ring in the clearing near the Whispering Woods, the grass within it withered to ash, yet the surrounding foliage remained untouched, as if a precise, intense heat had descended from above.",
+        "A metallic fragment, warm to the touch and etched with symbols no one recognized, hummed faintly when held near the well, its low vibration causing the water to ripple as if disturbed by an unseen force.",
+        "Coordinates etched on an ancient stone tablet, long thought to be a forgotten boundary marker, pointed precisely north towards the desolate peaks of the Dragon's Tooth mountains, a region whispered to be home to forgotten ruins and ancient secrets."
     ]
     # Spawn one-by-one and assign fragment to each newly spawned subject
     for fragment in fragments:

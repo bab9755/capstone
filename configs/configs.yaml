@@ -1,0 +1,17 @@
+
+
+
+context:
+  p: 2
+  t_received: 2
+  t_summary: 2
+
+
+agents:
+  knowledge_agents: 3
+  subject_agents: 5
+
+
+environment:
+  width: 1000
+  height: 700

@@ -5,9 +5,9 @@ from dotenv import load_dotenv
 load_dotenv()
 from concurrent.futures import ThreadPoolExecutor, Future, as_completed
 import uuid
-
+from constants import system_prompt
 class LLM:
-    def __init__(self, agent):
+    def __init__(self, agent=None):
         self.agent = agent
         self.provider = os.getenv("LLM_PROVIDER", "openai").lower()
         self.model = os.getenv("LLM_MODEL", "gpt-4o-mini")
@@ -41,7 +41,7 @@ class LLM:
         payload = {
             "model": self.model,
             "messages": [
-                {"role": "system", "content": "You are a helpful assistant for a 2D agent simulation."},
+                {"role": "system", "content": system_prompt},
                 {"role": "user", "content": prompt},
             ],
         }
@@ -57,7 +57,7 @@ class LLM:
         payload = {
             "model": self.model,
             "messages": [
-                {"role": "system", "content": "You are a helpful assistant for a 2D agent simulation. Help me summarize the payload that I am giving you consizely and in a way that is easy to understand."},
+                {"role": "system", "content": system_prompt},
                 {"role": "user", "content": prompt},
             ],
             "stream": False,

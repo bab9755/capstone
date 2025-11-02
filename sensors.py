@@ -50,7 +50,7 @@ class Sensor:
 
     def exchange_context_with_agents(self, new_agent_objects):
         for agent in new_agent_objects:
-            # Share only the latest summary string, not the entire deque
+            #we always only share the latest information
             latest_from_other = agent.t_summary[-1] if len(agent.t_summary) > 0 else ""
             latest_from_self = self.agent.t_summary[-1] if len(self.agent.t_summary) > 0 else ""
             if latest_from_other:

@@ -1,6 +1,5 @@
 from llm import LLM
 from vi import Agent
-from context import Context
 from sensors import Sensor, Actuator
 import random
 from constants import WIDTH, HEIGHT
@@ -8,7 +7,7 @@ import pygame as pg
 from collections import deque
 from story_registry import story_registry
 class knowledgeAgent(Agent):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, context_size: int = 2, *args, **kwargs):
         super().__init__(*args, **kwargs)
     
         self.sensor = Sensor(self) # for global coordinate access
@@ -25,14 +24,15 @@ class knowledgeAgent(Agent):
         self.object_state = "NONE"
         # story discovery tracking
         self.discovered_stories = set()
+        self.agent_id = None
         
         # Timer for periodic LLM summarization (every 20 seconds = 20,000ms)
         self.last_summary_time = pg.time.get_ticks()
         self.summary_interval = 20000  # 20 seconds in milliseconds
 
-        self.p = deque(maxlen=1)
+        self.p = deque(maxlen=context_size)
         self.t_summary = deque(maxlen=1)
-        self.t_received = deque(maxlen=1)
+        self.t_received = deque(maxlen=context_size)
         self._pending_summary_task_id = None
 
 
@@ -49,7 +49,7 @@ class knowledgeAgent(Agent):
             case "ALONE":
                 if number_of_neighbors > 0:
                     # here we will exchange information
-                    self.sensor.exchange_context_with_agents(neighbors)
+                    self.sensor.exchange_context_with_agents(agents)
                     self.surrounding_state = "NOT_ALONE"
                     print(f"Agent {self.id} is now in the state NOT_ALONE")
             case "NOT_ALONE":
@@ -92,11 +92,9 @@ class knowledgeAgent(Agent):
         # Only run if there is something to summarize
         print("Running periodic summarization")
         print(f"Agent {self.id} is sending the following payload to the LLM: {list(self.p)} {list(self.t_summary)} {list(self.t_received)}")
-        prompt = (
-            f"You are a helpful assistant for a 2D agent simulation. Help me summarize the payload that I am giving you consizely and in a way that is easy to understand. "
-            f"\n\n p: {list(self.p)} \n\n t_summary: {list(self.t_summary)} \n\n t_received: {list(self.t_received)}. Only return the summary, no other text."
-        )
-        self._pending_summary_task_id = self.llm.submit(prompt)
+        context = list(self.p) + list(self.t_summary) + list(self.t_received)
+        context_str = " ".join(context)
+        self._pending_summary_task_id = self.llm.submit(context_str)
         # Clear inputs for next window
         print(f"Agent {self.id} scheduled periodic summarization at {pg.time.get_ticks()}ms")
 
@@ -136,6 +134,8 @@ class knowledgeAgent(Agent):
 
         return linear_speed, angular_velocity
 
+
+    # removed DB logging
 
 
     

@@ -4,12 +4,20 @@ version = "0.1.0"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "bert-score>=0.3.13",
     "dotenv>=0.9.9",
+    "evaluate>=0.4.6",
+    "moverscore>=1.0.3",
+    "nltk>=3.9.2",
+    "notebook>=7.4.7",
     "numpy>=2.3.3",
     "ollama>=0.5.4",
     "openai>=1.107.2",
     "pydantic>=2.11.8",
+    "pyemd>=1.0.0",
     "python-dotenv>=1.1.1",
+    "pytorch-transformers>=1.2.0",
     "requests>=2.32.5",
+    "torch>=2.9.0",
     "violet-simulator>=0.3.0",
 ]

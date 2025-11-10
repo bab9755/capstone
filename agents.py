@@ -7,7 +7,7 @@ import pygame as pg
 from collections import deque
 from story_registry import story_registry
 class knowledgeAgent(Agent):
-    def __init__(self, context_size: int = 2, *args, **kwargs):
+    def __init__(self, context_size: int = 2, social_learning_enabled: bool = True, *args, **kwargs):
         super().__init__(*args, **kwargs)
     
         self.sensor = Sensor(self) # for global coordinate access
@@ -25,16 +25,36 @@ class knowledgeAgent(Agent):
         # story discovery tracking
         self.discovered_stories = set()
         self.agent_id = None
+
+        
         
         # Timer for periodic LLM summarization (every 20 seconds = 20,000ms)
         self.last_summary_time = pg.time.get_ticks()
-        self.summary_interval = 20000  # 20 seconds in milliseconds
+        self.summary_interval = 10000  # 20 seconds in milliseconds
 
         self.p = deque(maxlen=context_size)
         self.t_summary = deque(maxlen=1)
         self.t_received = deque(maxlen=context_size)
         self._pending_summary_task_id = None
+        self._pending_interaction_task_id = None
+        self._pending_private_info_task_id = None
+        self.social_learning_enabled = social_learning_enabled
+        self.summary_history = []
+        self.score_history = []
+        #
 
+    def is_llm_busy(self):
+        """Check if agent is currently processing any LLM task"""
+        has_pending_summary = (
+            self._pending_summary_task_id is not None or
+            self._pending_interaction_task_id is not None or
+            self._pending_private_info_task_id is not None
+        )
+        if has_pending_summary or (len(self.pending_llm_tasks) > 0):
+            print(f"Agent {self.id} is busy with pending tasks.")
+            return True
+        else:
+            return False
 
     def update(self): # at every tick (timestep), this function will be run
 
@@ -45,23 +65,29 @@ class knowledgeAgent(Agent):
         number_of_subjects = len(subjects)
 
         #finite state machine for surrounding state
-        match self.surrounding_state:
-            case "ALONE":
-                if number_of_neighbors > 0:
-                    # here we will exchange information
-                    self.sensor.exchange_context_with_agents(agents)
-                    self.surrounding_state = "NOT_ALONE"
-                    print(f"Agent {self.id} is now in the state NOT_ALONE")
-            case "NOT_ALONE":
-                if number_of_neighbors == 0:
-                    self.surrounding_state = "ALONE"
+
+        if self.social_learning_enabled:
+            match self.surrounding_state:
+                case "ALONE":
+                    if number_of_neighbors > 0:
+                        # here we will exchange information (if not busy)
+                        if not self.is_llm_busy():
+                            self.sensor.exchange_context_with_agents(agents)
+                            self.summarize_interaction()
+                        self.surrounding_state = "NOT_ALONE"
+                        print(f"Agent {self.id} is now in the state NOT_ALONE")
+                case "NOT_ALONE":
+                    if number_of_neighbors == 0:
+                        self.surrounding_state = "ALONE"
 
         #finite state machine for object state
         match self.object_state:
             case "NONE":
                 if number_of_subjects > 0:
                     print("Encountered a site")
-                    self.sensor.collect_information_from_subjects(subjects)
+                    if not self.is_llm_busy():
+                        self.sensor.collect_information_from_subjects(subjects)
+                        self.summarize_private_information()
                     self.object_state = "ON_SITE"
                     
             case "ON_SITE":
@@ -70,27 +96,82 @@ class knowledgeAgent(Agent):
 
         # Process any completed LLM tasks
         for task_id_result, result in self.llm.poll():
-            # Periodic summarization completion
-            if self._pending_summary_task_id and task_id_result == self._pending_summary_task_id:
+            # Interaction summarization completion (merge summaries from agent interaction)
+            if self._pending_interaction_task_id and task_id_result == self._pending_interaction_task_id:
+                print(f"Agent {self.id} received interaction summary: {result}")
+                self.t_summary.append(result)
+                self.summary_history.append(result)
+                self._pending_interaction_task_id = None
+            # Private information summarization completion
+            elif self._pending_private_info_task_id and task_id_result == self._pending_private_info_task_id:
+                print(f"Agent {self.id} received private info summary: {result}")
+                self.t_summary.append(result)
+                self.summary_history.append(result)
+                self._pending_private_info_task_id = None
+            # Legacy periodic summarization completion (for backward compatibility)
+            elif self._pending_summary_task_id and task_id_result == self._pending_summary_task_id:
                 print(f"Agent {self.id} received LLM summary: {result}")
                 self.t_summary.append(result)
+                self.summary_history.append(result)
                 self._pending_summary_task_id = None
 
-        # Check if it's time for periodic summarization (every 20 seconds)
-        current_time = pg.time.get_ticks()
-        if current_time - self.last_summary_time >= self.summary_interval:
-            self.run_periodic_summarization()
-            self.last_summary_time = current_time
+        # # Check if it's time for periodic summarization (every 20 seconds)
+        # current_time = pg.time.get_ticks()
+        # if current_time - self.last_summary_time >= self.summary_interval:
+        #     self.run_periodic_summarization()
+        #     self.last_summary_time = current_time
         
         
     
+    def summarize_interaction(self):
+        """
+        Summarize interaction between agents by merging this agent's summary 
+        with summaries received from other agents.
+        """
+        # Avoid overlapping tasks
+        if self._pending_interaction_task_id is not None:
+            return
+        
+        # Get agent's own summary
+        own_summary = self.t_summary[-1] if len(self.t_summary) > 0 else ""
+        
+        received_summaries = " ".join(self.t_received)
+        context_str = own_summary + " " + received_summaries
+        print(f"Agent {self.id} merging summaries for interaction: {context_str[:100]}...")
+        
+        self._pending_interaction_task_id = self.llm.submit(context_str)
+        print(f"Agent {self.id} scheduled interaction summarization at {pg.time.get_ticks()}ms")
+    
+    def summarize_private_information(self):
+        """
+        Summarize private information collected from sites (stored in p).
+        """
+        # Avoid overlapping tasks
+        if self._pending_private_info_task_id is not None:
+            return
+
+        own_summary = self.t_summary[-1] if len(self.t_summary) > 0 else ""
+        # Get private information collected from sites
+        private_info = " ".join(self.p) if self.p else ""
+        
+        # Only proceed if we have private information to summarize
+
+        
+        context_str = own_summary + " " + private_info
+        print(f"Agent {self.id} summarizing private information: {context_str[:100]}...")
+        
+        self._pending_private_info_task_id = self.llm.submit(context_str)
+        print(f"Agent {self.id} scheduled private information summarization at {pg.time.get_ticks()}ms")
+    
     def run_periodic_summarization(self):
-        """Run the LLM summarization chunk every 20 seconds"""
+        """
+        Legacy method - kept for backward compatibility.
+        Use summarize_interaction() or summarize_private_information() instead.
+        """
         # Avoid overlapping tasks
         if self._pending_summary_task_id is not None:
             return
         # Only run if there is something to summarize
-        print("Running periodic summarization")
         print(f"Agent {self.id} is sending the following payload to the LLM: {list(self.p)} {list(self.t_summary)} {list(self.t_received)}")
         context = list(self.p) + list(self.t_summary) + list(self.t_received)
         context_str = " ".join(context)

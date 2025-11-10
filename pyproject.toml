@@ -19,5 +19,10 @@ dependencies = [
     "pytorch-transformers>=1.2.0",
     "requests>=2.32.5",
     "torch>=2.9.0",
+    "torchvision>=0.24.0",
+    "transformers>=4.44.0",
+    "accelerate>=0.34.0",
     "violet-simulator>=0.3.0",
+    "sentence-transformers>=5.1.2",
+    "rank-bm25>=0.2.2",
 ]

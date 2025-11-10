@@ -21,7 +21,7 @@ class LLM:
 
         global _LLM_EXECUTOR
         if "_LLM_EXECUTOR" not in globals() or _LLM_EXECUTOR is None:
-            max_workers = int(os.getenv("LLM_MAX_WORKERS", "4"))
+            max_workers = int(os.getenv("LLM_MAX_WORKERS", "10"))
             _LLM_EXECUTOR = ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="llm")
 
         self._executor = _LLM_EXECUTOR

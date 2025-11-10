@@ -1,49 +1,55 @@
-from agents import knowledgeAgent, Villager
+from agents import knowledgeAgent
 from vi import Config, Simulation, Window
 from subjects import SubjectAgent
 from environment import Environment
 from constants import WIDTH, HEIGHT
-from story_registry import create_story_environment, story_registry
+from story_registry import create_story_environment
 import pygame as pg
-from constants import fragments
+from constants import ground_truth
 from visualize import LivePlot
-from metrics import compute_bert_score
 import random
-import yaml
-from pathlib import Path
-
-
-
-def load_config():
-    config_file = Path("configs/configs.yaml")
-    if not config_file.exists():
-        raise FileNotFoundError(f"Config file not found: {config_file}")
-    with open(config_file, "r") as f:
-        config = yaml.safe_load(f)
-
-    return config
+import math
+from helpers import load_config
 
 def run_simulation():
 
     config = load_config()
 
-    story_sites = create_story_environment(WIDTH, HEIGHT, seed=random.randint(0, 1000000))
+    story_sites = create_story_environment(WIDTH, HEIGHT, seed=random.randint(0, 10))
     context_length = config.get("context", {}).get("p", 2)
     num_knowledge_agents = config.get("agents", {}).get("knowledge_agents", 3)
     num_subject_agents = config.get("agents", {}).get("subject_agents", 5)
+    social_learning_enabled = config.get("social_learning_enabled", False)
     
-    config = Config(window=Window(WIDTH, HEIGHT), seed=random.randint(0, 1000000))
-    simulation = Environment(llm_provider="Ollama", llm_model="gemma3", num_knowledge_agents=num_knowledge_agents, num_subject_agents=num_subject_agents, fragments=fragments, config=config)
+    config = Config(window=Window(WIDTH, HEIGHT), seed=random.randint(0, 10))
+    simulation = Environment(llm_provider="Ollama", llm_model="gemma3", num_knowledge_agents=num_knowledge_agents, num_subject_agents=num_subject_agents, config=config)
     
     def create_knowledge_agents(*args, **kwargs):
-        return knowledgeAgent(context_size=context_length, *args, **kwargs)
+        return knowledgeAgent(context_size=context_length, social_learning_enabled=social_learning_enabled, *args, **kwargs)
     simulation.batch_spawn_agents(num_knowledge_agents, create_knowledge_agents, images=["images/robot.png"])
 
-    for fragment in fragments:
+    num_fragments = len(ground_truth)
+    grid_cols = math.ceil(math.sqrt(num_fragments))
+    grid_rows = math.ceil(num_fragments / grid_cols)
+    x_spacing = WIDTH / (grid_cols + 1)
+    y_spacing = HEIGHT / (grid_rows + 1)
+    subject_positions = []
+
+    for row in range(grid_rows):
+        for col in range(grid_cols):
+            if len(subject_positions) >= num_fragments:
+                break
+            x = (col + 1) * x_spacing
+            y = (row + 1) * y_spacing
+            subject_positions.append((x, y))
+
+    for fragment, position in zip(ground_truth, subject_positions):
         simulation.batch_spawn_agents(1, SubjectAgent, images=["images/villager.png"])
         subjects = [a for a in simulation._agents if getattr(a, "role", None) == "SUBJECT"]
         if subjects:
-            subjects[-1].info = fragment
+            subject = subjects[-1]
+            subject.info = fragment
+            subject.pos.update(position)
 
     
     return simulation
@@ -61,5 +67,7 @@ if __name__ == "__main__":
     finally:
         if simulation:
             simulation.stop()
+            # Save experiment data and plot on exit
+            simulation.save_experiment_data(plot)
         
         

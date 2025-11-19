@@ -92,6 +92,27 @@ def aggregate_group_scores(experiment_files: Sequence[Path]) -> AggregatedScores
     )
 
 
+def trim_leading_all_zero_timesteps(
+    series_list: Sequence[np.ndarray], *, atol: float = 1e-9
+) -> tuple[List[np.ndarray], int]:
+    """
+    Remove leading timesteps where every provided series is effectively zero.
+    """
+    series_copy = [np.asarray(series) for series in series_list]
+    if not series_copy:
+        return series_copy, 0
+
+    stacked = np.vstack(series_copy)
+    all_zero_columns = np.all(np.isclose(stacked, 0.0, atol=atol), axis=0)
+    non_zero_indices = np.flatnonzero(~all_zero_columns)
+
+    if non_zero_indices.size == 0:
+        return series_copy, 0
+
+    start_idx = int(non_zero_indices[0])
+    return [series[start_idx:] for series in series_copy], start_idx
+
+
 def resolve_experiment_selection(
     base_dir: Path, selection: Sequence[str] | None, *, label: str
 ) -> List[Path]:
@@ -121,9 +142,21 @@ def resolve_experiment_selection(
                 )
             resolved.append(found)
     else:
-        resolved = sorted(
-            path.resolve() for path in base_dir.glob("*/experiment.json") if path.is_file()
-        )
+        candidates = [
+            path.resolve()
+            for path in base_dir.rglob("experiment.json")
+            if path.is_file()
+        ]
+
+        label_lower = label.lower()
+        if "single" in label_lower:
+            candidates = [p for p in candidates if "single_agent" in p.as_posix()]
+        elif "social" in label_lower:
+            candidates = [p for p in candidates if "social_learning_swarm" in p.as_posix()]
+        elif "self" in label_lower:
+            candidates = [p for p in candidates if "self_learning_swarm" in p.as_posix()]
+
+        resolved = sorted(candidates)
 
     if not resolved:
         raise FileNotFoundError(
@@ -141,14 +174,14 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--single-dir",
         type=Path,
-        default=Path("experiments/single_agent"),
-        help="Directory containing single-agent experiment folders (default: %(default)s)",
+        default=Path("experiments"),
+        help="Root directory to scan for single-agent experiments (default: %(default)s)",
     )
     parser.add_argument(
         "--swarm-dir",
         type=Path,
-        default=Path("experiments/swarm_self_learning"),
-        help="Directory containing swarm self learning experiment folders (default: %(default)s)",
+        default=Path("experiments"),
+        help="Root directory to scan for swarm self-learning experiments (default: %(default)s)",
     )
     parser.add_argument(
         "--single-experiments",
@@ -197,9 +230,19 @@ def main(argv: Iterable[str] | None = None) -> int:
     if global_min_len == 0:
         raise RuntimeError("No shared datapoints to plot between selected groups.")
 
-    x = np.arange(global_min_len)
     single_series = single_scores.mean_series[:global_min_len]
     swarm_series = swarm_scores.mean_series[:global_min_len]
+
+    trimmed_series, dropped = trim_leading_all_zero_timesteps(
+        [single_series, swarm_series]
+    )
+    single_series, swarm_series = trimmed_series
+
+    plot_len = single_series.size
+    if plot_len == 0:
+        raise RuntimeError("All datapoints are zero; nothing to plot after trimming.")
+
+    x = np.arange(plot_len)
 
     plt.figure(figsize=(10, 6))
     plt.plot(
@@ -227,8 +270,10 @@ def main(argv: Iterable[str] | None = None) -> int:
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
     plt.savefig(args.output, dpi=300, bbox_inches="tight")
+
+    extra_note = f", dropped {dropped} leading zero timesteps" if dropped else ""
     print(
-        f"Saved plot to {args.output} using {global_min_len} shared datapoints "
+        f"Saved plot to {args.output} using {plot_len} shared datapoints{extra_note} "
         f"(single min={single_scores.length}, swarm min={swarm_scores.length})."
     )
 
@@ -242,4 +287,5 @@ def main(argv: Iterable[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
 

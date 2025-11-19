@@ -2,9 +2,14 @@ from llm import LLM
 from vi import Agent
 from sensors import Sensor, Actuator
 import random
-from constants import WIDTH, HEIGHT
 import pygame as pg
 from collections import deque
+from runtime_config import get_runtime_settings
+
+_SETTINGS = get_runtime_settings()
+_ENV_WIDTH = _SETTINGS["environment"]["width"]
+_ENV_HEIGHT = _SETTINGS["environment"]["height"]
+
 from story_registry import story_registry
 class knowledgeAgent(Agent):
     def __init__(self, context_size: int = 2, social_learning_enabled: bool = True, *args, **kwargs):
@@ -17,8 +22,8 @@ class knowledgeAgent(Agent):
         self.message_queue = deque() 
         self.pending_llm_tasks = {}  
         self.role = "KNOWLEDGE_AGENT"
-        self.pos.x = random.uniform(0, WIDTH)
-        self.pos.y = random.uniform(0, HEIGHT)
+        self.pos.x = random.uniform(0, _ENV_WIDTH)
+        self.pos.y = random.uniform(0, _ENV_HEIGHT)
 
         self.surrounding_state = "ALONE" # this is to track the state when the agent is surrounded by other ones or not
         self.object_state = "NONE"
@@ -114,12 +119,6 @@ class knowledgeAgent(Agent):
                 self.t_summary.append(result)
                 self.summary_history.append(result)
                 self._pending_summary_task_id = None
-
-        # # Check if it's time for periodic summarization (every 20 seconds)
-        # current_time = pg.time.get_ticks()
-        # if current_time - self.last_summary_time >= self.summary_interval:
-        #     self.run_periodic_summarization()
-        #     self.last_summary_time = current_time
         
         
     
@@ -133,7 +132,7 @@ class knowledgeAgent(Agent):
             return
         
         # Get agent's own summary
-        own_summary = self.t_summary[-1] if len(self.t_summary) > 0 else ""
+        own_summary = " ".join(self.t_summary) if self.t_summary else ""
         
         received_summaries = " ".join(self.t_received)
         context_str = own_summary + " " + received_summaries
@@ -237,8 +236,8 @@ class Villager(Agent):
         self.seen_agents = set()
         self.seen_agents_time = {} 
 
-        self.pos.x = random.uniform(0, WIDTH)
-        self.pos.y = random.uniform(0, HEIGHT)
+        self.pos.x = random.uniform(0, _ENV_WIDTH)
+        self.pos.y = random.uniform(0, _ENV_HEIGHT)
 
     def update(self):
         pass

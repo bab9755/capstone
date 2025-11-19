@@ -1,9 +1,14 @@
 from vi.util import Vector2
 from vi.simulation import Shared
-from constants import WIDTH, HEIGHT
 import random
 import pygame as pg
 import copy
+from runtime_config import get_runtime_settings
+
+_SETTINGS = get_runtime_settings()
+_ENV_WIDTH = _SETTINGS["environment"]["width"]
+_ENV_HEIGHT = _SETTINGS["environment"]["height"]
+
 class Sensor:
 
     def __init__(self, agent):
@@ -12,7 +17,7 @@ class Sensor:
     def border_collision(self):
         pos = self.agent.pos
 
-        if pos.x < 0 or pos.x > WIDTH or pos.y < 0 or pos.y > HEIGHT:
+        if pos.x < 0 or pos.x > _ENV_WIDTH or pos.y < 0 or pos.y > _ENV_HEIGHT:
             return True
         return False
 

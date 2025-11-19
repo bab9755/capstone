@@ -2,16 +2,72 @@
 
 
 context:
-  p: 2
-  t_received: 2
-  t_summary: 2
+  p: 1
+  t_received: 1
+  t_summary: 1
 
+metric: cosine-bm25
 
-agents:
-  knowledge_agents: 3
-  subject_agents: 5
+visualization:
+  live_plot:
+    enabled: false
+    update_interval_ms: 3000
 
+experiments:
+  active_profile: alpha3
+  profiles:
+    low:
+      label: low
+      swarm_type: self_learning
+      num_knowledge_agents: 10
+      ground_truth_key: ground_truth_1
+      environment:
+        width: 500
+        height: 500
+    medium:
+      label: medium
+      swarm_type: self_learning
+      num_knowledge_agents: 25
+      ground_truth_key: ground_truth_2
+      environment:
+        width: 750
+        height: 750
+    high:
+      label: high
+      swarm_type: self_learning
+      num_knowledge_agents: 50
+      ground_truth_key: ground_truth_3
+      environment:
+        width: 1000
+        height: 1000
 
-environment:
-  width: 1000
-  height: 700
+    alpha1:
+      label: alpha1
+      swarm_type: self_learning
+      num_knowledge_agents: 10
+      ground_truth_key: ground_truth_2
+      environment:
+        width: 750
+        height: 750
+
+    alpha2:
+      label: alpha2
+      swarm_type: self_learning
+      num_knowledge_agents: 50
+      ground_truth_key: ground_truth_2
+      environment:
+        width: 750
+        height: 750
+
+    alpha3:
+      label: alpha3
+      swarm_type: self_learning
+      num_knowledge_agents: 100
+      ground_truth_key: ground_truth_2
+      environment:
+        width: 750
+        height: 750
+
+swarm_overrides:
+  swarm_type: social_learning
+  social_learning_enabled: True

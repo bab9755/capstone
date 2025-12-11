@@ -1,0 +1,850 @@
+{
+  "0": [
+    "",
+    "",
+    "",
+    "",
+    "Healthcare providers showcase community outreach photos."
+  ],
+  "0_score": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.30314353222554347,
+    0.30314353222554347,
+    0.30314353222554347,
+    0.30314353222554347
+  ],
+  "1": [
+    "",
+    "",
+    "Workshops on networking etiquette begin in the adjoining classroom.",
+    "Workshops on networking etiquette begin in the adjoining classroom, while consulting firms stack glossy case study booklets on high tables."
+  ],
+  "1_score": [
+    0.0,
+    0.0,
+    0.32105120569865975,
+    0.32105120569865975,
+    0.32105120569865975,
+    0.32105120569865975,
+    0.32105120569865975,
+    0.32105120569865975
+  ],
+  "2": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "Event staff are at the entrance, scanning registrations and handing out lanyards."
+  ],
+  "2_score": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.3719216324662594,
+    0.3719216324662594
+  ],
+  "3": [
+    "",
+    "",
+    "",
+    "",
+    "Some students rehearse elevator pitches quietly against the wall.",
+    "Some students rehearse elevator pitches quietly against a wall, while a cybersecurity company runs a password cracking challenge on a laptop."
+  ],
+  "3_score": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.2517356866071708,
+    0.2517356866071708,
+    0.2517356866071708,
+    0.2517356866071708
+  ],
+  "4": [
+    "",
+    "",
+    "Some students rehearse elevator pitches quietly against the wall."
+  ],
+  "4_score": [
+    0.0,
+    0.0,
+    0.2517356866071708,
+    0.2517356866071708,
+    0.2517356866071708,
+    0.2517356866071708,
+    0.2517356866071708,
+    0.2517356866071708
+  ],
+  "5": [
+    "",
+    "",
+    "At the event entrance, staff scan registrations and hand out lanyards to attendees.",
+    "At the event entrance, staff scan registrations and hand out lanyards to attendees. Groups of friends mark target employers on the event map."
+  ],
+  "5_score": [
+    0.0,
+    0.0,
+    0.3788557855790993,
+    0.3788557855790993,
+    0.3788557855790993,
+    0.3788557855790993,
+    0.3788557855790993,
+    0.5803972563066153
+  ],
+  "6": [
+    "",
+    "",
+    "",
+    "",
+    "Students clutch resumes inside branded folders."
+  ],
+  "6_score": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.3635177653521838,
+    0.3635177653521838,
+    0.3635177653521838,
+    0.3635177653521838
+  ],
+  "7": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "Students line up outside the university gym ahead of the career fair opening."
+  ],
+  "7_score": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.4208914794220261,
+    0.4208914794220261
+  ],
+  "8": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    "In the scene, human resources teams jot notes on tablets while students introduce themselves."
+  ],
+  "8_score": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.34394117140671704,
+    0.34394117140671704,
+    0.34394117140671704
+  ],
+  "9": [
+    "",
+    "",
+    "",
+    "",
+    "Event staff scan registrations and hand out lanyards at the entrance."
+  ],
+  "9_score": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.4158364650772636,
+    0.4158364650772636,
+    0.4158364650772636,
+    0.4158364650772636
+  ],
+  "10": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    "Tech companies display demo screens showing their latest apps."
+  ],
+  "10_score": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.4034518193692507,
+    0.4034518193692507,
+    0.4034518193692507
+  ],
+  "11": [
+    "",
+    "",
+    "In a setting with career counselors and attendees, counselors remind attendees to maintain eye contact.",
+    "In a career fair-like setting, counselors and attendees are present. Counselors remind attendees to maintain eye contact. Dozens of booths, each adorned with colorful banners, circle the polished floor."
+  ],
+  "11_score": [
+    0.0,
+    0.0,
+    0.25680130664898804,
+    0.25680130664898804,
+    0.25680130664898804,
+    0.25680130664898804,
+    0.25680130664898804,
+    0.25680130664898804
+  ],
+  "12": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    "Groups of friends mark target employers on the event map."
+  ],
+  "12_score": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.3812926829585004,
+    0.3812926829585004,
+    0.3812926829585004
+  ],
+  "13": [
+    "",
+    "A line of students forms outside the university gym ahead of the career fair opening.",
+    "A line of students forms outside the university gym ahead of the career fair opening. Alumni volunteers share quick pep talks near the coffee station."
+  ],
+  "13_score": [
+    0.0,
+    0.3921090074075989,
+    0.3921090074075989,
+    0.3921090074075989,
+    0.3921090074075989,
+    0.3921090074075989,
+    0.4767645044659626,
+    0.4767645044659626
+  ],
+  "14": [
+    "",
+    "",
+    "",
+    "",
+    "Groups of friends mark target employers on the event map."
+  ],
+  "14_score": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.3812926829585004,
+    0.3812926829585004,
+    0.3812926829585004,
+    0.3812926829585004
+  ],
+  "15": [
+    "",
+    "",
+    "Alumni volunteers share quick pep talks near the coffee station."
+  ],
+  "15_score": [
+    0.0,
+    0.0,
+    0.33928313829666595,
+    0.33928313829666595,
+    0.33928313829666595,
+    0.33928313829666595,
+    0.33928313829666595,
+    0.33928313829666595
+  ],
+  "16": [
+    "",
+    "",
+    "",
+    "",
+    "Event staff at the entrance scan registrations and hand out lanyards."
+  ],
+  "16_score": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.4189227757023398,
+    0.4189227757023398,
+    0.4189227757023398,
+    0.4189227757023398
+  ],
+  "17": [
+    "",
+    "",
+    "",
+    "Dozens of booths form a circle around a polished floor, each booth displaying colorful banners.",
+    "Dozens of booths form a circle around a polished floor, each booth displaying colorful banners. Career counselors redirect unsure students toward applicable industries."
+  ],
+  "17_score": [
+    0.0,
+    0.0,
+    0.0,
+    0.342920323368909,
+    0.342920323368909,
+    0.342920323368909,
+    0.342920323368909,
+    0.342920323368909
+  ],
+  "18": [
+    "",
+    "",
+    "",
+    "Students line up outside the university gym before the career fair opens."
+  ],
+  "18_score": [
+    0.0,
+    0.0,
+    0.0,
+    0.4061364062322907,
+    0.4061364062322907,
+    0.4061364062322907,
+    0.4061364062322907,
+    0.4061364062322907
+  ],
+  "19": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "Consulting firms stack glossy case study booklets on high tables."
+  ],
+  "19_score": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.30883971387844156,
+    0.30883971387844156
+  ],
+  "20": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "A robotics startup uses a small drone, flown above its booth, to attract attention."
+  ],
+  "20_score": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.3479264210069083,
+    0.3479264210069083
+  ],
+  "21": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    "Students line up outside the university gym before the career fair opens."
+  ],
+  "21_score": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.4061364062322907,
+    0.4061364062322907,
+    0.4061364062322907
+  ],
+  "22": [
+    "",
+    "",
+    "Groups of friends mark target employers on the event map."
+  ],
+  "22_score": [
+    0.0,
+    0.0,
+    0.3812926829585004,
+    0.3812926829585004,
+    0.3812926829585004,
+    0.3812926829585004,
+    0.3812926829585004,
+    0.3812926829585004
+  ],
+  "23": [
+    "",
+    "",
+    "A welcome announcement outlines the fair schedule over the PA system."
+  ],
+  "23_score": [
+    0.0,
+    0.0,
+    0.4366145737661652,
+    0.4366145737661652,
+    0.4366145737661652,
+    0.4366145737661652,
+    0.4366145737661652,
+    0.4366145737661652
+  ],
+  "24": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    "Healthcare providers showcase photos of community outreach; the images depict healthcare workers participating in outreach activities."
+  ],
+  "24_score": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.3116826840822862,
+    0.3116826840822862,
+    0.3116826840822862
+  ],
+  "25": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    "Healthcare providers showcase community outreach photos."
+  ],
+  "25_score": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.30314353222554347,
+    0.30314353222554347,
+    0.30314353222554347
+  ],
+  "26": [
+    "",
+    "",
+    "Finance firms offer QR codes for immediate internship applications.",
+    "Finance firms offer QR codes for immediate internship applications, and the engineering society sponsors a resume review table near the stage."
+  ],
+  "26_score": [
+    0.0,
+    0.0,
+    0.38653269686466674,
+    0.38653269686466674,
+    0.38653269686466674,
+    0.38653269686466674,
+    0.38653269686466674,
+    0.38653269686466674
+  ],
+  "27": [
+    "",
+    "",
+    "An alumni panel discusses how to prepare for technical interviews."
+  ],
+  "27_score": [
+    0.0,
+    0.0,
+    0.4562845553238129,
+    0.4562845553238129,
+    0.4562845553238129,
+    0.4562845553238129,
+    0.4562845553238129,
+    0.4562845553238129
+  ],
+  "28": [
+    "",
+    "",
+    "",
+    "",
+    "Career counselors redirect unsure students toward applicable industries."
+  ],
+  "28_score": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.3883903097600283,
+    0.3883903097600283,
+    0.3883903097600283,
+    0.3883903097600283
+  ],
+  "29": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "Students line up outside the university gym before the career fair opens."
+  ],
+  "29_score": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.4061364062322907,
+    0.4061364062322907
+  ],
+  "30": [
+    "",
+    "",
+    "A group of students clutch resumes inside branded folders."
+  ],
+  "30_score": [
+    0.0,
+    0.0,
+    0.3376360815257372,
+    0.3376360815257372,
+    0.3376360815257372,
+    0.3376360815257372,
+    0.3376360815257372,
+    0.3376360815257372
+  ],
+  "31": [
+    "",
+    "",
+    "",
+    "Finance firms offer QR codes for immediate internship applications.",
+    "Finance firms offer QR codes for immediate internship applications, while workshops on networking etiquette begin in the adjoining classroom."
+  ],
+  "31_score": [
+    0.0,
+    0.0,
+    0.0,
+    0.38653269686466674,
+    0.38653269686466674,
+    0.38653269686466674,
+    0.38653269686466674,
+    0.38653269686466674
+  ],
+  "32": [
+    "",
+    "",
+    "Healthcare providers showcase community outreach photos.",
+    "A scene in which healthcare providers showcase community outreach photos, with human resources teams jotting notes on tablets while students introduce themselves."
+  ],
+  "32_score": [
+    0.0,
+    0.0,
+    0.30314353222554347,
+    0.30314353222554347,
+    0.30314353222554347,
+    0.30314353222554347,
+    0.30314353222554347,
+    0.34130951905152296
+  ],
+  "33": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "At the entrance, event staff scan registrations and hand out lanyards."
+  ],
+  "33_score": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.3751304216956524,
+    0.3751304216956524
+  ],
+  "34": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+  ],
+  "34_score": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "35": [
+    "",
+    "",
+    "",
+    "",
+    "A robotics startup flies a small drone above its booth for attention."
+  ],
+  "35_score": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.3838442075272853,
+    0.3838442075272853,
+    0.3838442075272853,
+    0.3838442075272853
+  ],
+  "36": [
+    "",
+    "",
+    "Career counselors remind attendees to maintain eye contact."
+  ],
+  "36_score": [
+    0.0,
+    0.0,
+    0.3404783241318653,
+    0.3404783241318653,
+    0.3404783241318653,
+    0.3404783241318653,
+    0.3404783241318653,
+    0.3404783241318653
+  ],
+  "37": [
+    "",
+    "",
+    "Career counselors remind attendees to maintain eye contact.",
+    "Career counselors remind attendees to maintain eye contact, while an alumni panel discusses how to prepare for technical interviews."
+  ],
+  "37_score": [
+    0.0,
+    0.0,
+    0.3404783241318653,
+    0.3404783241318653,
+    0.3404783241318653,
+    0.3404783241318653,
+    0.41028181330409624,
+    0.41028181330409624
+  ],
+  "38": [
+    "",
+    "",
+    "",
+    "",
+    "A welcome announcement is being broadcast over the PA system, outlining the fair schedule."
+  ],
+  "38_score": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.36941914481635313,
+    0.36941914481635313,
+    0.36941914481635313,
+    0.36941914481635313
+  ],
+  "39": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    "Some students stand against the wall, quietly rehearsing elevator pitches."
+  ],
+  "39_score": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.20898100268245146,
+    0.20898100268245146,
+    0.20898100268245146
+  ],
+  "40": [
+    "",
+    "",
+    "",
+    "",
+    "The engineering society sponsors a resume review table near the stage."
+  ],
+  "40_score": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.41316526323728114,
+    0.41316526323728114,
+    0.41316526323728114,
+    0.41316526323728114
+  ],
+  "41": [
+    "",
+    "",
+    "",
+    "",
+    "Dozens of booths with colorful banners encircle a polished floor, creating a vivid perimeter around the space."
+  ],
+  "41_score": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.30650433290287865,
+    0.30650433290287865,
+    0.30650433290287865,
+    0.30650433290287865
+  ],
+  "42": [
+    "",
+    "",
+    "Career counselors redirect unsure students toward applicable industries.",
+    "Career counselors redirect unsure students toward applicable industries, while alumni volunteers share quick pep talks near the coffee station."
+  ],
+  "42_score": [
+    0.0,
+    0.0,
+    0.3883903097600283,
+    0.3883903097600283,
+    0.3883903097600283,
+    0.3883903097600283,
+    0.3883903097600283,
+    0.38752364802643663
+  ],
+  "43": [
+    "",
+    "",
+    "Career counselors redirect unsure students toward applicable industries.",
+    "In the event setting, career counselors redirect unsure students toward applicable industries, while groups of friends mark target employers on the event map."
+  ],
+  "43_score": [
+    0.0,
+    0.0,
+    0.3883903097600283,
+    0.3883903097600283,
+    0.3883903097600283,
+    0.3883903097600283,
+    0.3883903097600283,
+    0.43379033444044296
+  ],
+  "44": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    "A welcome announcement is broadcast over the PA system, outlining the fair schedule."
+  ],
+  "44_score": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.3808251134824298,
+    0.3808251134824298,
+    0.3808251134824298
+  ],
+  "45": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    "A cybersecurity company runs a password cracking challenge on a laptop."
+  ],
+  "45_score": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.3441129678399232,
+    0.3441129678399232,
+    0.3441129678399232
+  ],
+  "46": [
+    "",
+    "",
+    "A robotics startup flies a small drone above its booth for attention."
+  ],
+  "46_score": [
+    0.0,
+    0.0,
+    0.3838442075272853,
+    0.3838442075272853,
+    0.3838442075272853,
+    0.3838442075272853,
+    0.3838442075272853,
+    0.3838442075272853
+  ],
+  "47": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    "An alumni panel discusses how to prepare for technical interviews. The discussion draws on experiences from former students to outline preparation strategies and considerations for technical interview readiness."
+  ],
+  "47_score": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.49952448311757947,
+    0.49952448311757947,
+    0.49952448311757947
+  ],
+  "48": [
+    "",
+    "",
+    "At the entrance, event staff scan registrations and hand out lanyards.",
+    "At the entrance, event staff scan registrations and hand out lanyards, while an alumni panel discusses how to prepare for technical interviews."
+  ],
+  "48_score": [
+    0.0,
+    0.0,
+    0.3751304216956524,
+    0.3751304216956524,
+    0.3751304216956524,
+    0.3751304216956524,
+    0.3751304216956524,
+    0.3751304216956524
+  ],
+  "49": [
+    "",
+    "",
+    "",
+    "",
+    "Students clutch resumes inside branded folders."
+  ],
+  "49_score": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.3635177653521838,
+    0.3635177653521838,
+    0.3635177653521838,
+    0.3635177653521838
+  ]
+}

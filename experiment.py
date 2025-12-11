@@ -97,13 +97,14 @@ if __name__ == "__main__":
         else:
             print("ℹ️ Live plotting is disabled via configs.yaml; running headless.")
         simulation = run_simulation()
-        simulation.run(plot, max_duration_seconds=200)
+        simulation.run(plot, max_duration_seconds=120)
     except KeyboardInterrupt:
         print("\n⏹️  Simulation interrupted by user")
     finally:
         if simulation:
             simulation.stop()
-            # Save experiment data and plot on exit
-            simulation.save_experiment_data(plot)
+            # Persist results if the simulation ended unexpectedly
+            if not getattr(simulation, "_experiment_saved", False):
+                simulation.save_experiment_data(plot)
         
         

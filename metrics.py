@@ -164,13 +164,13 @@ def compute_final_score(agent_summary: str, ground_truth: str, alpha: float = 0.
     semantic = compute_score(agent_summary, ground_truth)
     lexical  = _bm25_score(gt_sents, sum_sents)
     final_score = alpha * semantic + (1 - alpha) * lexical
-    print("--------------------------------")
-    print(f"Computing the final score with the following: {gt_sents}")
-    print(f"And the following: {sum_sents}")
-    print(f"The semantic score is: {semantic}")
-    print(f"The lexical score is: {lexical}")
-    print(f"The final score is: {final_score}")
-    print("--------------------------------")
+    # print("--------------------------------")
+    # print(f"Computing the final score with the following: {gt_sents}")
+    # print(f"And the following: {sum_sents}")
+    # print(f"The semantic score is: {semantic}")
+    # print(f"The lexical score is: {lexical}")
+    # print(f"The final score is: {final_score}")
+    # print("--------------------------------")
     return final_score
 
 # ---- quick test ----

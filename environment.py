@@ -53,6 +53,7 @@ class Environment(Simulation):
 
         # Precompute ground-truth facts once for efficiency
         
+        self._experiment_saved = False
 
     def _HeadlessSimulation__update_positions(self):
         for sprite in self._agents.sprites():
@@ -83,6 +84,13 @@ class Environment(Simulation):
             ):  # update cadence configurable via runtime settings
                 self.update_plot(self.plot)
                 self.last_plot_time = pg.time.get_ticks()
+
+        # Process any remaining scores, persist experiment output, and display plot
+        run_plot = self.plot
+        self.process_score_queue()
+        self.save_experiment_data(run_plot)
+        if run_plot is not None:
+            run_plot.show()
 
         return self._metrics
 
@@ -145,6 +153,9 @@ class Environment(Simulation):
     
     def save_experiment_data(self, plot: LivePlot):
         """Save experiment data and plot to the experiments directory"""
+        if self._experiment_saved:
+            print("ℹ️ Experiment data already saved; skipping duplicate save.")
+            return
         try:
             # Collect summaries per agent (keys as string agent ids)
             data = {}
@@ -215,6 +226,7 @@ class Environment(Simulation):
                     print(f"⚠️ Failed to save plot image: {e_img}")
  
             print(f"💾 Saved experiment to {run_dir}")
+            self._experiment_saved = True
         except Exception as e:
             print(f"⚠️ Failed to save experiment data: {e}")
                 

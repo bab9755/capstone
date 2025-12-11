@@ -54,6 +54,7 @@ class Sensor:
 
 
     def exchange_context_with_agents(self, new_agent_objects):
+        "we should probably run a summary only if it has enough tokens to get considered"
         for agent in new_agent_objects:
             #we always only share the latest information
             latest_from_other = agent.t_summary[-1] if len(agent.t_summary) > 0 else ""

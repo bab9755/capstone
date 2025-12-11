@@ -68,3 +68,13 @@ class LivePlot:
                 self.fig.savefig(filepath, dpi=200, bbox_inches="tight")
             except Exception as e:
                 print(f"⚠️ Failed to save plot image to {filepath}: {e}")
+
+    def show(self, *, block: bool = True):
+        """Display the plot window once updates are complete."""
+        with self.lock:
+            plt.ioff()
+            self.fig.canvas.draw()
+            if block:
+                plt.show()
+            else:
+                self.fig.show()

@@ -1,6 +1,3 @@
-
-
-
 context:
   p: 1
   t_received: 1
@@ -14,7 +11,7 @@ visualization:
     update_interval_ms: 3000
 
 experiments:
-  active_profile: alpha3
+  active_profile: alpha2
   profiles:
     low:
       label: low
@@ -63,6 +60,15 @@ experiments:
       label: alpha3
       swarm_type: self_learning
       num_knowledge_agents: 100
+      ground_truth_key: ground_truth_2
+      environment:
+        width: 750
+        height: 750
+
+    alpha4:
+      label: alpha4
+      swarm_type: self_learning
+      num_knowledge_agents: 50
       ground_truth_key: ground_truth_2
       environment:
         width: 750

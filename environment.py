@@ -32,9 +32,11 @@ class Environment(Simulation):
             (self.runtime_settings.get("visualization") or {}).get("live_plot") or {}
         )
         self.live_plot_enabled = bool(live_plot_settings.get("enabled", True))
-        self.plot_update_interval_ms = int(
-            live_plot_settings.get("update_interval_ms", 3000)
-        )
+        
+        # Fixed number of data points for consistency
+        self.num_snapshots = int(self.runtime_settings.get("num_snapshots", 30))
+        self.snapshot_interval_seconds = float(self.runtime_settings.get("snapshot_interval_seconds", 10.0))
+        self.snapshots_recorded = 0
 
         ground_truth_bundle = self.runtime_settings["ground_truth"]
         self.ground_truth_key = ground_truth_bundle.get("name")
@@ -48,6 +50,7 @@ class Environment(Simulation):
 
         self.executor = ThreadPoolExecutor(max_workers=10)
         self.score_queue = queue.Queue()
+        self.pending_score_futures: list[Future] = []  # Track pending score computations
         self.experiment_duration = 2000
         self.plot: LivePlot | None = None
 
@@ -62,32 +65,61 @@ class Environment(Simulation):
             linear_speed, angular_velocity = agent.get_velocities()
             agent.actuator.update_position(linear_speed, angular_velocity)
 
-    def run(self, plot: LivePlot | None = None, *, max_duration_seconds: float | None = None):
-        """Run the simulation until it's ended by closing the window, `vi.config.Schema.duration`, or max_duration_seconds."""
+    def clean_llm_result(self, result: str) -> str:
+        """Clean and validate LLM result. Returns empty string if invalid."""
+        if not result:
+            return ""
+        
+        cleaned = result.strip()
+        while cleaned and cleaned[0] in '"\'\\ ' and cleaned[-1] in '"\'\\ ':
+            cleaned = cleaned.strip().strip('"\'\\')
+        empty_responses = {'""', "''", '\"\"', "\'\'", "null", "None", "N/A", "n/a", "empty"}
+        if cleaned.lower() in empty_responses or cleaned in empty_responses:
+            return ""
+        
+        # Skip very short nonsense
+        if len(cleaned) < 5:
+            return ""
+        
+        # Must contain at least one alphanumeric character
+        if not any(c.isalnum() for c in cleaned):
+            return ""
+        
+        return cleaned
+    def run(self, plot: LivePlot | None = None):
+        """
+        Run the simulation until all snapshots are recorded.
+        Duration = num_snapshots × snapshot_interval_seconds
+        """
         self._running = True
         self.plot = plot if (plot is not None and self.live_plot_enabled) else None
+        self.next_snapshot_time = self.snapshot_interval_seconds
+        
+        total_duration = self.num_snapshots * self.snapshot_interval_seconds
+        print(f"🚀 Starting experiment: {self.num_snapshots} snapshots × {self.snapshot_interval_seconds}s = {total_duration}s total")
         
         while self._running:
             self.tick()
-            self.tick_count += 1  # Increment simulated time counter
+            self.tick_count += 1
 
-            if max_duration_seconds is not None:
-                elapsed_seconds = self._elapsed_sim_seconds()
-                if elapsed_seconds >= max_duration_seconds:
-                    self.stop()
-                    break
+            elapsed_seconds = self._elapsed_sim_seconds()
+            
+            # Check if it's time for a snapshot
+            if elapsed_seconds >= self.next_snapshot_time and self.snapshots_recorded < self.num_snapshots:
+                self.record_snapshot()
+                self.next_snapshot_time += self.snapshot_interval_seconds
+            
+            # Stop when we have all snapshots
+            if self.snapshots_recorded >= self.num_snapshots:
+                print(f"✅ All {self.num_snapshots} snapshots recorded. Ending experiment.")
+                self.stop()
+                break
 
             self.process_score_queue()
-            if (
-                pg.time.get_ticks() - self.last_plot_time
-                >= self.plot_update_interval_ms
-            ):  # update cadence configurable via runtime settings
-                self.update_plot(self.plot)
-                self.last_plot_time = pg.time.get_ticks()
 
-        # Process any remaining scores, persist experiment output, and display plot
+        # Wait for all pending score computations to finish
         run_plot = self.plot
-        self.process_score_queue()
+        self.wait_for_pending_scores()
         self.save_experiment_data(run_plot)
         if run_plot is not None:
             run_plot.show()
@@ -106,39 +138,71 @@ class Environment(Simulation):
 
 
 
-    def update_plot(self, plot):  # triggered on the configured cadence
+    def record_snapshot(self):
+        """Record a snapshot for ALL agents. Always records exactly one data point per agent."""
         current_time = pg.time.get_ticks()
+        snapshot_index = self.snapshots_recorded  # Current snapshot index (0-based)
+        
         for agent in self._agents:
             if agent.role == "KNOWLEDGE_AGENT":
                 summary = " ".join(agent.t_summary)
-                
                 agent_id = agent.id
                 tick = current_time
                 
-                if not summary or summary.strip() == "":
-                    agent.summary_history.append("")
-                    agent.score_history.append(0.0)
+                # Clean the summary
+                cleaned_summary = self.clean_llm_result(summary)
+                
+                # Initialize score_by_index dict if not exists
+                if not hasattr(agent, 'score_by_index'):
+                    agent.score_by_index = {}
+                
+                # ALWAYS append to summary_history (empty string if no valid summary)
+                agent.summary_history.append(cleaned_summary if cleaned_summary else "")
+                
+                if not cleaned_summary:
+                    # No valid summary - record 0.0 score at this index
+                    agent.score_by_index[snapshot_index] = 0.0
                     self.score_queue.put((agent_id, tick, 0.0))
                 else:
+                    # Valid summary - compute score asynchronously
                     metric_name = (self.metric or "").lower()
                     if metric_name == "cosine-bert":
-                        future = self.executor.submit(compute_score, summary, self.ground_truth_facts)
+                        future = self.executor.submit(compute_score, cleaned_summary, self.ground_truth_facts)
                     elif metric_name == "bert-score":
-                        future = self.executor.submit(compute_bert_score, summary, self.ground_truth_facts)
+                        future = self.executor.submit(compute_bert_score, cleaned_summary, self.ground_truth_facts)
                     elif metric_name == "cosine-bm25":
-                        future = self.executor.submit(compute_final_score, summary, self.ground_truth_facts)
+                        future = self.executor.submit(compute_final_score, cleaned_summary, self.ground_truth_facts)
                     else:
                         raise ValueError(f"Invalid metric: {self.metric}")
+                    
+                    # Capture snapshot_index for this callback
                     knowledge_agent = agent
-                    def on_complete(fut, knowledge_agent=knowledge_agent, aid=agent_id, t=tick):
+                    idx = snapshot_index
+                    def on_complete(fut, knowledge_agent=knowledge_agent, aid=agent_id, t=tick, idx=idx):
                         try:
                             score = fut.result()
-                            knowledge_agent.score_history.append(score)
+                            knowledge_agent.score_by_index[idx] = score  # Store by index, not append
                             self.score_queue.put((aid, t, score))
                         except Exception as e:
-                            print(f"Error computing BERT score for agent {aid} at tick {t}: {e}")
+                            print(f"Error computing score for agent {aid}: {e}")
+                            knowledge_agent.score_by_index[idx] = 0.0  # Fallback
                     
-                    future.add_done_callback(lambda f, knowledge_agent=knowledge_agent, aid=agent_id, t=tick: on_complete(f, knowledge_agent, aid, t))
+                    future.add_done_callback(lambda f, knowledge_agent=knowledge_agent, aid=agent_id, t=tick, idx=idx: on_complete(f, knowledge_agent, aid, t, idx))
+                    self.pending_score_futures.append(future)
+        
+        self.snapshots_recorded += 1
+        print(f"📸 Snapshot {self.snapshots_recorded}/{self.num_snapshots} recorded")
+
+    def wait_for_pending_scores(self, timeout: float = 30.0):
+        """Wait for all pending score computations to complete."""
+        if not self.pending_score_futures:
+            return
+        print(f"⏳ Waiting for {len(self.pending_score_futures)} pending score computations...")
+        for future in as_completed(self.pending_score_futures, timeout=timeout):
+            pass  # Callbacks already handle the results
+        # Clean up completed futures
+        self.pending_score_futures = [f for f in self.pending_score_futures if not f.done()]
+        print("✅ All score computations complete.")
 
     def _elapsed_sim_seconds(self) -> float:
         fps = getattr(self.config, "fps", None) if hasattr(self, "config") else None
@@ -157,17 +221,34 @@ class Environment(Simulation):
             print("ℹ️ Experiment data already saved; skipping duplicate save.")
             return
         try:
-            # Collect summaries per agent (keys as string agent ids)
-            data = {}
+            # Generate logical timestamps: [0, 10, 20, 30, ...] based on snapshot interval
+            interval = self.snapshot_interval_seconds
+            timestamps = [int(i * interval) for i in range(self.num_snapshots + 1)]
+            
+            # Build data structure with timestamp -> score/summary maps
+            data = {
+                "timestamps": timestamps,
+                "snapshot_interval_seconds": interval,
+                "num_snapshots": self.num_snapshots,
+                "agents": {}
+            }
+            
             for agent in self._agents:
                 if getattr(agent, "role", None) == "KNOWLEDGE_AGENT":
                     agent_key = str(agent.id)
-                    summaries = getattr(agent, "summary_history", None)
-                    if summaries is None:
-                        last = list(getattr(agent, "t_summary", []))
-                        summaries = last if last else []
-                    data[agent_key] = list(summaries)
-                    data[agent_key + "_score"] = list(agent.score_history)
+                    summaries = list(getattr(agent, "summary_history", []))
+                    score_by_index = getattr(agent, "score_by_index", {})
+                    
+                    # Build scores array from indexed dict (ensures correct order)
+                    scores = [score_by_index.get(i, 0.0) for i in range(len(timestamps))]
+                    
+                    print(f"Agent {agent_key}: {len(summaries)} summaries, {len(scores)} scores")
+                    
+                    # Create timestamp -> value maps
+                    data["agents"][agent_key] = {
+                        "scores": {str(t): scores[i] if i < len(scores) else 0.0 for i, t in enumerate(timestamps)},
+                        "summaries": {str(t): summaries[i] if i < len(summaries) else "" for i, t in enumerate(timestamps)}
+                    }
 
             base_dir = Path("experiments")
             profile_key = (self.profile_key or "unspecified").replace(" ", "_")
@@ -202,6 +283,7 @@ class Environment(Simulation):
                 "num_subject_agents": self.num_subject_agents,
                 "social_learning_enabled": self.social_learning_enabled,
                 "metric": self.metric,
+                "num_snapshots": self.num_snapshots,
                 "ground_truth_key": self.ground_truth_key,
                 "ground_truth_summary": self.ground_truth_summary,
                 "ground_truth_snippet_count": len(self.runtime_settings["ground_truth"].get("snippets", [])),

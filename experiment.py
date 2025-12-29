@@ -44,16 +44,16 @@ def run_simulation():
         config=simulation_config,
     )
 
+    num_snapshots = settings.get("num_snapshots", 30)
+    snapshot_interval = settings.get("snapshot_interval_seconds", 10.0)
+    
     print(f"Running the simulation with the following settings")
-    print(f"Environment width: {env_width}")
-    print(f"Environment height: {env_height}")
+    print(f"Environment: {env_width}x{env_height}")
+    print(f"Agents: {num_knowledge_agents} knowledge, {num_subject_agents} subjects")
     print(f"Context length: {context_length}")
     print(f"Social learning enabled: {social_learning_enabled}")
-    print(f"Live plotting enabled: {live_plot_enabled}")
-    print(f"Live plot interval (ms): {live_plot_interval_ms}")
-    print(f"Number of knowledge agents: {num_knowledge_agents}")
-    print(f"Number of subject agents: {num_subject_agents}")
-    print(f"Ground truth snippets: {ground_truth_snippets}")
+    print(f"Snapshots: {num_snapshots} × {snapshot_interval}s = {num_snapshots * snapshot_interval}s total")
+    print(f"Ground truth snippets: {len(ground_truth_snippets)}")
 
     def create_knowledge_agents(*args, **kwargs):
         return knowledgeAgent(context_size=context_length, social_learning_enabled=social_learning_enabled, *args, **kwargs)
@@ -97,7 +97,7 @@ if __name__ == "__main__":
         else:
             print("ℹ️ Live plotting is disabled via configs.yaml; running headless.")
         simulation = run_simulation()
-        simulation.run(plot, max_duration_seconds=120)
+        simulation.run(plot)
     except KeyboardInterrupt:
         print("\n⏹️  Simulation interrupted by user")
     finally:

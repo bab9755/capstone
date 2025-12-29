@@ -16,9 +16,8 @@ class knowledgeAgent(Agent):
         super().__init__(*args, **kwargs)
     
         self.sensor = Sensor(self) # for global coordinate access
-        self.actuator = Actuator(self) # for local coordinate access
+        self.actuator = Actuator(self) 
         self.llm = LLM(self) 
-        self.context = [] # list of context objects
         self.message_queue = deque() 
         self.pending_llm_tasks = {}  
         self.role = "KNOWLEDGE_AGENT"
@@ -56,7 +55,6 @@ class knowledgeAgent(Agent):
             self._pending_private_info_task_id is not None
         )
         if has_pending_summary or (len(self.pending_llm_tasks) > 0):
-            print(f"Agent {self.id} is busy with pending tasks.")
             return True
         else:
             return False
@@ -100,24 +98,19 @@ class knowledgeAgent(Agent):
                     self.object_state = "NONE"
 
         # Process any completed LLM tasks
+        # NOTE: Only update t_summary here. summary_history is managed by record_snapshot()
         for task_id_result, result in self.llm.poll():
-            # Interaction summarization completion (merge summaries from agent interaction)
             if self._pending_interaction_task_id and task_id_result == self._pending_interaction_task_id:
                 print(f"Agent {self.id} received interaction summary: {result}")
                 self.t_summary.append(result)
-                self.summary_history.append(result)
                 self._pending_interaction_task_id = None
-            # Private information summarization completion
             elif self._pending_private_info_task_id and task_id_result == self._pending_private_info_task_id:
                 print(f"Agent {self.id} received private info summary: {result}")
                 self.t_summary.append(result)
-                self.summary_history.append(result)
                 self._pending_private_info_task_id = None
-            # Legacy periodic summarization completion (for backward compatibility)
             elif self._pending_summary_task_id and task_id_result == self._pending_summary_task_id:
                 print(f"Agent {self.id} received LLM summary: {result}")
                 self.t_summary.append(result)
-                self.summary_history.append(result)
                 self._pending_summary_task_id = None
         
         
@@ -127,82 +120,35 @@ class knowledgeAgent(Agent):
         Summarize interaction between agents by merging this agent's summary 
         with summaries received from other agents.
         """
-        # Avoid overlapping tasks
-        if self._pending_interaction_task_id is not None:
+        if self.is_llm_busy():
             return
         
-        # Get agent's own summary
         own_summary = " ".join(self.t_summary) if self.t_summary else ""
-        
         received_summaries = " ".join(self.t_received)
-        context_str = own_summary + " " + received_summaries
-        print(f"Agent {self.id} merging summaries for interaction: {context_str[:100]}...")
         
-        self._pending_interaction_task_id = self.llm.submit(context_str)
+        print(f"Agent {self.id} merging summaries for interaction...")
+        self._pending_interaction_task_id = self.llm.submit_interaction(
+            summary=own_summary,
+            received_info=received_summaries
+        )
         print(f"Agent {self.id} scheduled interaction summarization at {pg.time.get_ticks()}ms")
     
     def summarize_private_information(self):
         """
         Summarize private information collected from sites (stored in p).
         """
-        # Avoid overlapping tasks
-        if self._pending_private_info_task_id is not None:
+        if self.is_llm_busy():
             return
 
-        own_summary = self.t_summary[-1] if len(self.t_summary) > 0 else ""
-        # Get private information collected from sites
+        own_summary = " ".join(self.t_summary) if self.t_summary else ""
         private_info = " ".join(self.p) if self.p else ""
         
-        # Only proceed if we have private information to summarize
-
-        
-        context_str = own_summary + " " + private_info
-        print(f"Agent {self.id} summarizing private information: {context_str[:100]}...")
-        
-        self._pending_private_info_task_id = self.llm.submit(context_str)
+        print(f"Agent {self.id} summarizing private information...")
+        self._pending_private_info_task_id = self.llm.submit_private_info(
+            summary=own_summary,
+            private_info=private_info
+        )
         print(f"Agent {self.id} scheduled private information summarization at {pg.time.get_ticks()}ms")
-    
-    def run_periodic_summarization(self):
-        """
-        Legacy method - kept for backward compatibility.
-        Use summarize_interaction() or summarize_private_information() instead.
-        """
-        # Avoid overlapping tasks
-        if self._pending_summary_task_id is not None:
-            return
-        # Only run if there is something to summarize
-        print(f"Agent {self.id} is sending the following payload to the LLM: {list(self.p)} {list(self.t_summary)} {list(self.t_received)}")
-        context = list(self.p) + list(self.t_summary) + list(self.t_received)
-        context_str = " ".join(context)
-        self._pending_summary_task_id = self.llm.submit(context_str)
-        # Clear inputs for next window
-        print(f"Agent {self.id} scheduled periodic summarization at {pg.time.get_ticks()}ms")
-
-    def reset_proximity_state(self):
-        """Reset the proximity state (useful for testing or new scenarios)"""
-        self.seen_agents.clear()
-        self.current_proximity_agents.clear()
-        print(f"Agent {self.id} reset proximity state")
-
-    def discover_story_information(self):
-        """Discover story information when entering a site area and add to context."""
-        info = story_registry.get_info_at_position(self.pos.x, self.pos.y)
-        if not info or info in self.discovered_stories:
-            print("Did not discover story information")
-            return
-        self.discovered_stories.add(info)
-        self.add_context(f"DISCOVERY: {info}")
-
-    def add_context(self, context: str):
-        # Enqueue an async LLM summary request; append placeholder immediately
-        context_str = context
-        context_to_process = context_str + "\n" + self.context[-1] if self.context else context_str
-        self.context.append("[summarizing…]")
-        placeholder_index = len(self.context) - 1
-        task_id = self.llm.submit(context_to_process)
-        self.pending_llm_tasks[task_id] = placeholder_index
-        print(f"Agent {self.id} queued LLM summarization task {task_id}")
-
     def get_velocities(self): 
         # at the start of the simulation this is what we get
         linear_speed = 2
@@ -210,37 +156,9 @@ class knowledgeAgent(Agent):
 
         if self.sensor.border_collision(): # if the agent is on the edge of the world, it randomly changes its angular velocity
             angular_velocity = 10
-            linear_speed = 2
+            linear_speed = 5
 
         return linear_speed, angular_velocity
 
 
     # removed DB logging
-
-
-    
-
-
-    
-class Villager(Agent):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.sensor = Sensor(self) # for global coordinate access
-        self.actuator = Actuator(self) # for local coordinate access
-        self.llm = LLM(self) 
-        self.context = context
-        self.message_queue = deque() 
-        self.pending_llm_tasks = {}  
-        self.type = "ENV"
-
-        self.seen_agents = set()
-        self.seen_agents_time = {} 
-
-        self.pos.x = random.uniform(0, _ENV_WIDTH)
-        self.pos.y = random.uniform(0, _ENV_HEIGHT)
-
-    def update(self):
-        pass
-
-    def get_velocities(self):
-        return 0, 0

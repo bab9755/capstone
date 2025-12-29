@@ -54,15 +54,17 @@ class Sensor:
 
 
     def exchange_context_with_agents(self, new_agent_objects):
-        "we should probably run a summary only if it has enough tokens to get considered"
-        for agent in new_agent_objects:
-            #we always only share the latest information
-            latest_from_other = agent.t_summary[-1] if len(agent.t_summary) > 0 else ""
-            latest_from_self = self.agent.t_summary[-1] if len(self.agent.t_summary) > 0 else ""
-            if latest_from_other:
-                self.agent.t_received.append(latest_from_other)
-            if latest_from_self:
-                agent.t_received.append(latest_from_self)
+        "Assuming that we have multiple agents in our proximity, we only want to get the exchange from the first agent we encounter"
+
+        first_agent = new_agent_objects[0]
+        first_agent_summary = first_agent.t_summary[-1] if len(first_agent.t_summary) > 0 else ""
+        current_agent_summary = self.agent.t_summary[-1] if len(self.agent.t_summary) > 0 else ""
+
+        if first_agent_summary:
+            self.agent.t_received.append(first_agent_summary)
+            self.agent.summarize_interaction()
+        if current_agent_summary:
+            first_agent.t_received.append(current_agent_summary)
 
 
     def collect_information_from_subjects(self, new_agent_objects):

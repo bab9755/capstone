@@ -34,8 +34,8 @@ class Environment(Simulation):
         self.live_plot_enabled = bool(live_plot_settings.get("enabled", True))
         
         # Fixed number of data points for consistency
-        self.num_snapshots = int(self.runtime_settings.get("num_snapshots", 30))
-        self.snapshot_interval_seconds = float(self.runtime_settings.get("snapshot_interval_seconds", 10.0))
+        self.num_snapshots = int(self.runtime_settings.get("num_snapshots", 60))
+        self.snapshot_interval_seconds = float(self.runtime_settings.get("snapshot_interval_seconds", 5.0))
         self.snapshots_recorded = 0
 
         ground_truth_bundle = self.runtime_settings["ground_truth"]
@@ -110,7 +110,7 @@ class Environment(Simulation):
                 self.next_snapshot_time += self.snapshot_interval_seconds
             
             # Stop when we have all snapshots
-            if self.snapshots_recorded >= self.num_snapshots:
+            if self.snapshots_recorded > self.num_snapshots:
                 print(f"✅ All {self.num_snapshots} snapshots recorded. Ending experiment.")
                 self.stop()
                 break
@@ -223,7 +223,7 @@ class Environment(Simulation):
         try:
             # Generate logical timestamps: [0, 10, 20, 30, ...] based on snapshot interval
             interval = self.snapshot_interval_seconds
-            timestamps = [int(i * interval) for i in range(self.num_snapshots + 1)]
+            timestamps = [int(i * interval) for i in range(self.num_snapshots)]
             
             # Build data structure with timestamp -> score/summary maps
             data = {

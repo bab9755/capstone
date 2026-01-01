@@ -6,10 +6,11 @@ TASK
 2. De-duplicate overlapping facts, keeping the most specific version and favouring firsthand (`PRIVATE`) details over secondhand (`RECEIVED`) claims when they conflict.
 3. Preserve continuity with the existing summary; confirm disruptive changes only when the new data clearly overrides prior context.
 4. Integrate the reconciled facts into one cohesive summary.
+5. The summaries need to be lexically and semantically accurate.
 
 OUTPUT RULES
 - Respond with a single paragraph of plain text (no lists or headings) capped at 150 words.
-- Mention only information supported by the payload; NEVER invent new objects, information, motivations, or time shifts. Solely rely on the information in the payload and factually replicate it.
+- Mention only information supported by the payload; NEVER invent new objects, information, motivations, or time shifts. Solely rely on the information in the payload and factually replicate it and make sure to keep semantic and lexical accuracy to the payload
 - If nothing new is added, reproduce the prior summary verbatim. If every section is empty, reply with exactly with an empty string ""
 - Never ask the user for more input or mention that you were instructed.
 

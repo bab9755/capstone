@@ -3,6 +3,7 @@ from __future__ import annotations
 from vi import Agent, Config, Simulation, Window, HeadlessSimulation
 from sentence_transformers import SentenceTransformer, util
 import json
+import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from llm import LLM
@@ -35,7 +36,7 @@ class Environment(Simulation):
         
         # Fixed number of data points for consistency
         self.num_snapshots = int(self.runtime_settings.get("num_snapshots", 60))
-        self.snapshot_interval_seconds = float(self.runtime_settings.get("snapshot_interval_seconds", 5.0))
+        self.snapshot_interval_seconds = float(self.runtime_settings.get("snapshot_interval_seconds", 2.0))
         self.snapshots_recorded = 0
 
         ground_truth_bundle = self.runtime_settings["ground_truth"]
@@ -110,7 +111,7 @@ class Environment(Simulation):
                 self.next_snapshot_time += self.snapshot_interval_seconds
             
             # Stop when we have all snapshots
-            if self.snapshots_recorded > self.num_snapshots:
+            if self.snapshots_recorded >= self.num_snapshots:
                 print(f"✅ All {self.num_snapshots} snapshots recorded. Ending experiment.")
                 self.stop()
                 break
@@ -221,12 +222,12 @@ class Environment(Simulation):
             print("ℹ️ Experiment data already saved; skipping duplicate save.")
             return
         try:
-            # Generate logical timestamps: [0, 10, 20, 30, ...] based on snapshot interval
+            # Generate logical timestamps: [2, 4, 6, ..., 120] based on snapshot interval
             interval = self.snapshot_interval_seconds
-            timestamps = [int(i * interval) for i in range(self.num_snapshots)]
+            timestamps = [int((i + 1) * interval) for i in range(self.num_snapshots)]
             
             # Build data structure with timestamp -> score/summary maps
-            data = {
+            data = {            
                 "timestamps": timestamps,
                 "snapshot_interval_seconds": interval,
                 "num_snapshots": self.num_snapshots,
@@ -258,12 +259,10 @@ class Environment(Simulation):
             else:
                 cohort_dirname = f"{swarm_type}_swarm"
 
-            agents_dir = base_dir / profile_key / cohort_dirname / f"ka-{self.num_knowledge_agents}"
-            scenario_dirname = (self.ground_truth_key or "ground_truth").replace(" ", "_")
-            scenario_dir = agents_dir / scenario_dirname
-            scenario_dir.mkdir(parents=True, exist_ok=True)
+            profile_dir = base_dir / profile_key
+            profile_dir.mkdir(parents=True, exist_ok=True)
 
-            existing_runs = [p for p in scenario_dir.iterdir() if p.is_dir() and p.name.startswith("run_")]
+            existing_runs = [p for p in profile_dir.iterdir() if p.is_dir() and p.name.startswith("run_")]
             next_idx = 1
             if existing_runs:
                 try:
@@ -271,7 +270,7 @@ class Environment(Simulation):
                 except ValueError:
                     next_idx = 1
 
-            run_dir = scenario_dir / f"run_{next_idx:04d}"
+            run_dir = profile_dir / f"run_{next_idx:04d}"
             run_dir.mkdir(parents=True, exist_ok=True)
 
             metadata = {
@@ -299,17 +298,101 @@ class Environment(Simulation):
             with open(metadata_path, "w", encoding="utf-8") as meta_file:
                 json.dump(metadata, meta_file, ensure_ascii=False, indent=2)
 
-            # Save plot image
+            # Save live plot image (if available)
             if plot is not None:
-                img_path = run_dir / "plot.png"
+                img_path = run_dir / "live_plot.png"
                 try:
                     plot.save(img_path)
                 except Exception as e_img:
-                    print(f"⚠️ Failed to save plot image: {e_img}")
+                    print(f"⚠️ Failed to save live plot image: {e_img}")
+            
+            # Generate and save aesthetic score plot
+            self._save_score_plot(data, run_dir, swarm_type)
  
             print(f"💾 Saved experiment to {run_dir}")
             self._experiment_saved = True
         except Exception as e:
             print(f"⚠️ Failed to save experiment data: {e}")
+
+    def _save_score_plot(self, data: dict, run_dir: Path, swarm_type: str):
+        """Generate and save an aesthetic plot of average score over time."""
+        try:
+            # Extract data
+            timestamps = data["timestamps"]
+            agents_data = data["agents"]
+            num_agents = len(agents_data)
+            
+            # Collect all scores and compute mean
+            all_scores = []
+            for agent_id, agent_data in agents_data.items():
+                scores = [agent_data["scores"].get(str(t), 0.0) for t in timestamps]
+                all_scores.append(scores)
+            
+            all_scores = np.array(all_scores)
+            mean_scores = np.mean(all_scores, axis=0)
+            
+            # Set up the figure with a dark, modern aesthetic
+            plt.style.use('dark_background')
+            fig, ax = plt.subplots(figsize=(12, 6), facecolor='#0d1117')
+            ax.set_facecolor('#0d1117')
+            
+            # Plot mean score line with gradient fill
+            ax.fill_between(timestamps, 0, mean_scores, 
+                           color='#58a6ff', alpha=0.15)
+            ax.plot(timestamps, mean_scores, 
+                   color='#58a6ff', 
+                   linewidth=2.5)
+            
+            # Add markers at key points
+            ax.scatter([timestamps[-1]], [mean_scores[-1]], 
+                      color='#58a6ff', s=80, zorder=10, edgecolors='white', linewidths=1.5)
+            
+            # Final score annotation
+            final_mean = mean_scores[-1] if len(mean_scores) > 0 else 0
+            ax.annotate(f'{final_mean:.3f}', 
+                       xy=(timestamps[-1], final_mean),
+                       xytext=(15, 0), textcoords='offset points',
+                       fontsize=14, fontweight='bold', color='#58a6ff',
+                       va='center')
+            
+            # Styling
+            ax.set_xlabel('Time (seconds)', fontsize=13, color='#c9d1d9', labelpad=10)
+            ax.set_ylabel('Average Similarity Score', fontsize=13, color='#c9d1d9', labelpad=10)
+            
+            # Title
+            learning_type = "Social Learning" if self.social_learning_enabled else "Self Learning"
+            title = f'{learning_type} — Average Score Over Time'
+            subtitle = f'{num_agents} agents • {self.ground_truth_key or "scenario"}'
+            
+            ax.set_title(title, fontsize=16, color='#ffffff', fontweight='bold', pad=15)
+            ax.text(0.5, 1.02, subtitle, transform=ax.transAxes, 
+                   fontsize=10, color='#8b949e', ha='center', va='bottom')
+            
+            # Grid
+            ax.grid(True, alpha=0.15, color='#30363d', linestyle='-', linewidth=0.5)
+            ax.set_axisbelow(True)
+            
+            # Axis limits
+            ax.set_xlim(timestamps[0], timestamps[-1] + 10)
+            ax.set_ylim(0, 1.0)
+            
+            # Spine styling
+            for spine in ax.spines.values():
+                spine.set_visible(False)
+            
+            # Tick styling
+            ax.tick_params(colors='#8b949e', labelsize=10)
+            
+            plt.tight_layout()
+            
+            # Save
+            plot_path = run_dir / "scores_over_time.png"
+            plt.savefig(plot_path, dpi=150, facecolor='#0d1117', edgecolor='none', bbox_inches='tight')
+            plt.close(fig)
+            
+            print(f"📊 Saved score plot to {plot_path}")
+            
+        except Exception as e:
+            print(f"⚠️ Failed to generate score plot: {e}")
                 
                 

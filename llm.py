@@ -3,6 +3,7 @@ import uuid
 from dotenv import load_dotenv
 from concurrent.futures import ThreadPoolExecutor, Future
 from openai import OpenAI
+import ollama
 from constants import system_prompt
 
 load_dotenv()
@@ -44,12 +45,21 @@ class LLM:
     def __init__(self, agent=None):
         self.agent = agent
         
-        # Initialize OpenAI client
-        self.client = OpenAI(
-            api_key=os.getenv("OPENAI_API_KEY", ""),
-            base_url=os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1"),
-        )
-        self.model = os.getenv("LLM_MODEL", "gpt-4o-mini")
+        # Provider selection: "openai" or "ollama"
+        self.provider = os.getenv("LLM_PROVIDER", "openai").lower()
+        
+        # Default models per provider
+        if self.provider == "ollama":
+            self.model = os.getenv("LLM_MODEL", "gemma3")
+        else:
+            self.model = os.getenv("LLM_MODEL", "gpt-4o-mini")
+        
+        # OpenAI client (only needed for openai provider)
+        if self.provider == "openai":
+            self.client = OpenAI(
+                api_key=os.getenv("OPENAI_API_KEY", ""),
+                base_url=os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1"),
+            )
 
         # Initialize global executor if needed
         global _LLM_EXECUTOR
@@ -62,9 +72,18 @@ class LLM:
 
         self._executor = _LLM_EXECUTOR
         self._futures: dict[str, Future] = {}
+        
+        print(f"🤖 LLM initialized: provider={self.provider}, model={self.model}")
 
     def chat(self, prompt: str) -> str:
-        """Make a chat completion request using the OpenAI SDK."""
+        """Make a chat completion request."""
+        if self.provider == "ollama":
+            return self._ollama_chat(prompt)
+        else:
+            return self._openai_chat(prompt)
+
+    def _openai_chat(self, prompt: str) -> str:
+        """Make a chat request using OpenAI SDK."""
         try:
             response = self.client.chat.completions.create(
                 model=self.model,
@@ -75,9 +94,22 @@ class LLM:
                 timeout=200,
             )
             return response.choices[0].message.content or ""
-        
         except Exception as exc:
             raise LLMRequestError(f"OpenAI chat request failed: {exc}") from exc
+
+    def _ollama_chat(self, prompt: str) -> str:
+        """Make a chat request using native Ollama library."""
+        try:
+            response = ollama.chat(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": prompt},
+                ],
+            )
+            return response["message"]["content"] or ""
+        except Exception as exc:
+            raise LLMRequestError(f"Ollama chat request failed: {exc}") from exc
 
     def submit_interaction(self, summary: str, received_info: str) -> str:
         """

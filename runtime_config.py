@@ -96,6 +96,15 @@ def get_runtime_settings() -> Dict[str, Any]:
         if live_plot_interval_ms <= 0:
             raise ValueError("visualization.live_plot.update_interval_ms must be positive")
 
+    # Information teleportation settings (subject visibility toggling)
+    teleport_cfg = profile.get("information_teleportation") or {}
+    teleport_enabled = teleport_cfg.get("enabled", False)
+    teleport_mode = teleport_cfg.get("mode", "shuffle")  # "shuffle", "decay", or "probabilistic_decay"
+    visibility_prob = teleport_cfg.get("visibility_probability", 0.75)
+    decay_count = teleport_cfg.get("decay_count", 3)  # subjects to permanently remove per interval (decay mode)
+    decay_probability = teleport_cfg.get("decay_probability", 0.08)  # per-subject leave chance (probabilistic_decay mode)
+    interval_seconds = teleport_cfg.get("interval_seconds", 5.0)
+
     return {
         "profile_key": get_active_profile_key(),
         "swarm_type": swarm_type,
@@ -116,6 +125,14 @@ def get_runtime_settings() -> Dict[str, Any]:
                 "enabled": live_plot_enabled,
                 "update_interval_ms": live_plot_interval_ms,
             }
+        },
+        "information_teleportation": {
+            "enabled": teleport_enabled,
+            "mode": teleport_mode,  # "shuffle", "decay", or "probabilistic_decay"
+            "visibility_probability": visibility_prob,  # for shuffle mode
+            "decay_count": decay_count,  # for decay mode
+            "decay_probability": decay_probability,  # for probabilistic_decay mode
+            "interval_seconds": interval_seconds,
         },
     }
 

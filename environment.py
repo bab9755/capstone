@@ -15,6 +15,7 @@ from concurrent.futures import ThreadPoolExecutor, Future, as_completed
 from pathlib import Path
 from runtime_config import get_runtime_settings
 from datetime import datetime
+import random
 
 
 class Environment(Simulation):
@@ -38,6 +39,16 @@ class Environment(Simulation):
         self.num_snapshots = int(self.runtime_settings.get("num_snapshots", 60))
         self.snapshot_interval_seconds = float(self.runtime_settings.get("snapshot_interval_seconds", 2.0))
         self.snapshots_recorded = 0
+
+        # Subject visibility / information teleportation settings
+        teleport_settings = self.runtime_settings.get("information_teleportation", {})
+        self.teleportation_enabled = teleport_settings.get("enabled", False)
+        self.teleportation_mode = teleport_settings.get("mode", "shuffle")  # "shuffle", "decay", or "probabilistic_decay"
+        self.subject_visibility_probability = teleport_settings.get("visibility_probability", 0.75)
+        self.decay_count = teleport_settings.get("decay_count", 3)  # subjects to remove per interval (decay mode)
+        self.decay_probability = teleport_settings.get("decay_probability", 0.08)  # per-subject leave probability (probabilistic_decay)
+        self.visibility_interval = teleport_settings.get("interval_seconds", 5.0)
+        self.next_visibility_time = self.visibility_interval
 
         ground_truth_bundle = self.runtime_settings["ground_truth"]
         self.ground_truth_key = ground_truth_bundle.get("name")
@@ -104,6 +115,16 @@ class Environment(Simulation):
             self.tick_count += 1
 
             elapsed_seconds = self._elapsed_sim_seconds()
+            
+            # Information teleportation: modify subject visibility at intervals
+            if self.teleportation_enabled and elapsed_seconds >= self.next_visibility_time:
+                if self.teleportation_mode == "decay":
+                    self.decay_subject_visibility()
+                elif self.teleportation_mode == "probabilistic_decay":
+                    self.probabilistic_decay_subject_visibility()
+                else:
+                    self.shuffle_subject_visibility()
+                self.next_visibility_time += self.visibility_interval
             
             # Check if it's time for a snapshot
             if elapsed_seconds >= self.next_snapshot_time and self.snapshots_recorded < self.num_snapshots:
@@ -215,6 +236,65 @@ class Environment(Simulation):
             except (TypeError, ValueError):
                 pass
         return (pg.time.get_ticks() - self.start_time) / 1000.0
+
+    def shuffle_subject_visibility(self):
+        """
+        Randomly toggle visibility of subject agents based on visibility_probability.
+        This implements 'information teleportation' - subjects appear/disappear over time.
+        """
+        subjects = [a for a in self._agents if getattr(a, "role", None) == "SUBJECT"]
+        if not subjects:
+            return
+        
+        visible_count = 0
+        for subject in subjects:
+            is_visible = random.random() < self.subject_visibility_probability
+            subject.set_visible(is_visible)
+            if is_visible:
+                visible_count += 1
+        
+        print(f"🔀 Shuffled subject visibility: {visible_count}/{len(subjects)} visible ({self.subject_visibility_probability:.0%} probability)")
+
+    def decay_subject_visibility(self):
+        """
+        Permanently hide a fixed number of visible subjects.
+        Once hidden, subjects never reappear - information decays over time.
+        """
+        visible_subjects = [a for a in self._agents if getattr(a, "role", None) == "SUBJECT" and getattr(a, "visible", True)]
+        if not visible_subjects:
+            print("⚠️ No visible subjects remaining to decay")
+            return
+        
+        # Randomly select subjects to hide (up to decay_count or remaining visible)
+        num_to_hide = min(self.decay_count, len(visible_subjects))
+        subjects_to_hide = random.sample(visible_subjects, num_to_hide)
+        
+        for subject in subjects_to_hide:
+            subject.set_visible(False)
+        
+        remaining_visible = len(visible_subjects) - num_to_hide
+        total_subjects = len([a for a in self._agents if getattr(a, "role", None) == "SUBJECT"])
+        print(f"📉 Decayed {num_to_hide} subjects: {remaining_visible}/{total_subjects} still visible")
+
+    def probabilistic_decay_subject_visibility(self):
+        """
+        Each visible subject has an independent probability of permanently leaving.
+        Creates a naturalistic exponential decay curve.
+        """
+        visible_subjects = [a for a in self._agents if getattr(a, "role", None) == "SUBJECT" and getattr(a, "visible", True)]
+        if not visible_subjects:
+            print("⚠️ No visible subjects remaining")
+            return
+        
+        departed = 0
+        for subject in visible_subjects:
+            if random.random() < self.decay_probability:
+                subject.set_visible(False)
+                departed += 1
+        
+        remaining_visible = len(visible_subjects) - departed
+        total_subjects = len([a for a in self._agents if getattr(a, "role", None) == "SUBJECT"])
+        print(f"🎲 Probabilistic decay: {departed} left ({self.decay_probability:.0%} chance each), {remaining_visible}/{total_subjects} still visible")
     
     def save_experiment_data(self, plot: LivePlot):
         """Save experiment data and plot to the experiments directory"""
@@ -287,6 +367,14 @@ class Environment(Simulation):
                 "ground_truth_summary": self.ground_truth_summary,
                 "ground_truth_snippet_count": len(self.runtime_settings["ground_truth"].get("snippets", [])),
                 "context": self.runtime_settings.get("context", {}),
+                "information_teleportation": {
+                    "enabled": self.teleportation_enabled,
+                    "mode": self.teleportation_mode,
+                    "visibility_probability": self.subject_visibility_probability,
+                    "decay_count": self.decay_count,
+                    "decay_probability": self.decay_probability,
+                    "interval_seconds": self.visibility_interval,
+                } if self.teleportation_enabled else {"enabled": False},
             }
  
             # Save JSON

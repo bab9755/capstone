@@ -62,7 +62,8 @@ class knowledgeAgent(Agent):
     def update(self): # at every tick (timestep), this function will be run
 
         neighbors = list(self.in_proximity_performance())
-        subjects = [agent for agent in neighbors if agent.role == "SUBJECT"]
+        # Only interact with VISIBLE subjects (supports information teleportation)
+        subjects = [agent for agent in neighbors if agent.role == "SUBJECT" and getattr(agent, 'visible', True)]
         agents = [agent for agent in neighbors if agent.role == "KNOWLEDGE_AGENT"]
         number_of_neighbors = len(agents)
         number_of_subjects = len(subjects)

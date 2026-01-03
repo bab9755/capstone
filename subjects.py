@@ -1,5 +1,5 @@
 from vi import Agent
-from sensors import Actuator
+from sensors import Actuator, Sensor
 class Subject:
     def __init__(sel, information: str, position: tuple):
         self.information = information
@@ -20,10 +20,18 @@ class SubjectAgent(Agent):
         self.role = "SUBJECT"
         self.info = info
         self.actuator = Actuator(self)
+        self.visible = True  # Whether knowledge agents can interact with this subject
 
     def update(self):
         # Static subject: no behavior
         pass
+    
+    def set_visible(self, visible: bool):
+        """Set visibility state and update sprite alpha accordingly."""
+        self.visible = visible
+        # Visual feedback: dim the sprite when invisible
+        if hasattr(self, 'image') and self.image is not None:
+            self.image.set_alpha(255 if visible else 40)
 
     def get_velocities(self):
         return 0, 0

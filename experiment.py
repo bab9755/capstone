@@ -26,12 +26,32 @@ def run_simulation():
     if not ground_truth_snippets:
         raise ValueError("Active ground truth set must contain at least one snippet.")
 
-    # Align subject agent count with available snippets
-    num_fragments = len(ground_truth_snippets)
-    if num_subject_agents <= 0 or num_subject_agents > num_fragments:
-        num_subject_agents = num_fragments
-
-    ground_truth_snippets = ground_truth_snippets[:num_subject_agents]
+    # Information teleportation settings
+    teleport_settings = settings.get("information_teleportation", {})
+    teleport_enabled = teleport_settings.get("enabled", False)
+    teleport_mode = teleport_settings.get("mode", "shuffle")
+    initial_active_count = teleport_settings.get("initial_active_count", 5)
+    
+    # For dynamic_pool mode: shuffle and split snippets
+    is_dynamic_pool = teleport_enabled and teleport_mode == "dynamic_pool"
+    snippet_pool = []
+    
+    if is_dynamic_pool:
+        # Shuffle all snippets
+        random.shuffle(ground_truth_snippets)
+        # Split into initial active and pool
+        initial_active_count = min(initial_active_count, len(ground_truth_snippets))
+        initial_snippets = ground_truth_snippets[:initial_active_count]
+        snippet_pool = ground_truth_snippets[initial_active_count:]
+        ground_truth_snippets = initial_snippets
+        num_subject_agents = initial_active_count
+        print(f"🏊 Dynamic pool mode: {initial_active_count} initial subjects, {len(snippet_pool)} in pool")
+    else:
+        # Standard mode: align subject agent count with available snippets
+        num_fragments = len(ground_truth_snippets)
+        if num_subject_agents <= 0 or num_subject_agents > num_fragments:
+            num_subject_agents = num_fragments
+        ground_truth_snippets = ground_truth_snippets[:num_subject_agents]
 
     create_story_environment(env_width, env_height, seed=random.randint(0, 10))
 
@@ -82,6 +102,9 @@ def run_simulation():
             subject.info = fragment
             subject.pos.update(position)
 
+    # Initialize dynamic pool if in dynamic_pool mode
+    if is_dynamic_pool and snippet_pool:
+        simulation.initialize_dynamic_pool(snippet_pool)
     
     return simulation
 

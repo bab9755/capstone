@@ -99,11 +99,16 @@ def get_runtime_settings() -> Dict[str, Any]:
     # Information teleportation settings (subject visibility toggling)
     teleport_cfg = profile.get("information_teleportation") or {}
     teleport_enabled = teleport_cfg.get("enabled", False)
-    teleport_mode = teleport_cfg.get("mode", "shuffle")  # "shuffle", "decay", or "probabilistic_decay"
+    teleport_mode = teleport_cfg.get("mode", "shuffle")  # "shuffle", "decay", "probabilistic_decay", or "dynamic_pool"
     visibility_prob = teleport_cfg.get("visibility_probability", 0.75)
     decay_count = teleport_cfg.get("decay_count", 3)  # subjects to permanently remove per interval (decay mode)
     decay_probability = teleport_cfg.get("decay_probability", 0.08)  # per-subject leave chance (probabilistic_decay mode)
     interval_seconds = teleport_cfg.get("interval_seconds", 5.0)
+    
+    # Dynamic pool mode settings
+    initial_active_count = teleport_cfg.get("initial_active_count", 5)  # subjects active at start
+    appearance_mean_time = teleport_cfg.get("appearance_mean_time", 5.0)  # avg seconds until new subject appears
+    lifetime_mean_time = teleport_cfg.get("lifetime_mean_time", 10.0)  # avg lifetime of active subject in seconds
 
     return {
         "profile_key": get_active_profile_key(),
@@ -128,11 +133,15 @@ def get_runtime_settings() -> Dict[str, Any]:
         },
         "information_teleportation": {
             "enabled": teleport_enabled,
-            "mode": teleport_mode,  # "shuffle", "decay", or "probabilistic_decay"
+            "mode": teleport_mode,  # "shuffle", "decay", "probabilistic_decay", or "dynamic_pool"
             "visibility_probability": visibility_prob,  # for shuffle mode
             "decay_count": decay_count,  # for decay mode
             "decay_probability": decay_probability,  # for probabilistic_decay mode
             "interval_seconds": interval_seconds,
+            # dynamic_pool mode settings
+            "initial_active_count": initial_active_count,  # subjects active at start
+            "appearance_mean_time": appearance_mean_time,  # avg seconds until new subject appears
+            "lifetime_mean_time": lifetime_mean_time,  # avg lifetime of active subject
         },
     }
 

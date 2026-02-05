@@ -43,12 +43,22 @@ class Environment(Simulation):
         # Subject visibility / information teleportation settings
         teleport_settings = self.runtime_settings.get("information_teleportation", {})
         self.teleportation_enabled = teleport_settings.get("enabled", False)
-        self.teleportation_mode = teleport_settings.get("mode", "shuffle")  # "shuffle", "decay", or "probabilistic_decay"
+        self.teleportation_mode = teleport_settings.get("mode", "shuffle")  # "shuffle", "decay", "probabilistic_decay", or "dynamic_pool"
         self.subject_visibility_probability = teleport_settings.get("visibility_probability", 0.75)
         self.decay_count = teleport_settings.get("decay_count", 3)  # subjects to remove per interval (decay mode)
         self.decay_probability = teleport_settings.get("decay_probability", 0.08)  # per-subject leave probability (probabilistic_decay)
         self.visibility_interval = teleport_settings.get("interval_seconds", 5.0)
         self.next_visibility_time = self.visibility_interval
+        
+        # Dynamic pool mode settings
+        self.initial_active_count = teleport_settings.get("initial_active_count", 5)
+        self.appearance_mean_time = teleport_settings.get("appearance_mean_time", 5.0)
+        self.lifetime_mean_time = teleport_settings.get("lifetime_mean_time", 10.0)
+        
+        # Dynamic pool state (initialized by experiment.py if mode is dynamic_pool)
+        self.snippet_pool = []  # Inactive snippets waiting to appear
+        self.next_appearance_time = None  # When the next snippet will appear
+        self.subject_lifetimes = {}  # Maps subject agent -> expiry time in seconds
 
         ground_truth_bundle = self.runtime_settings["ground_truth"]
         self.ground_truth_key = ground_truth_bundle.get("name")
@@ -117,14 +127,18 @@ class Environment(Simulation):
             elapsed_seconds = self._elapsed_sim_seconds()
             
             # Information teleportation: modify subject visibility at intervals
-            if self.teleportation_enabled and elapsed_seconds >= self.next_visibility_time:
-                if self.teleportation_mode == "decay":
-                    self.decay_subject_visibility()
-                elif self.teleportation_mode == "probabilistic_decay":
-                    self.probabilistic_decay_subject_visibility()
-                else:
-                    self.shuffle_subject_visibility()
-                self.next_visibility_time += self.visibility_interval
+            if self.teleportation_enabled:
+                if self.teleportation_mode == "dynamic_pool":
+                    # Dynamic pool mode: continuous checking (not interval-based)
+                    self.dynamic_pool_update()
+                elif elapsed_seconds >= self.next_visibility_time:
+                    if self.teleportation_mode == "decay":
+                        self.decay_subject_visibility()
+                    elif self.teleportation_mode == "probabilistic_decay":
+                        self.probabilistic_decay_subject_visibility()
+                    else:
+                        self.shuffle_subject_visibility()
+                    self.next_visibility_time += self.visibility_interval
             
             # Check if it's time for a snapshot
             if elapsed_seconds >= self.next_snapshot_time and self.snapshots_recorded < self.num_snapshots:
@@ -295,6 +309,108 @@ class Environment(Simulation):
         remaining_visible = len(visible_subjects) - departed
         total_subjects = len([a for a in self._agents if getattr(a, "role", None) == "SUBJECT"])
         print(f"🎲 Probabilistic decay: {departed} left ({self.decay_probability:.0%} chance each), {remaining_visible}/{total_subjects} still visible")
+
+    def initialize_dynamic_pool(self, snippet_pool: list):
+        """
+        Initialize the dynamic pool mode with a pool of inactive snippets.
+        Called by experiment.py after spawning initial active subjects.
+        """
+        self.snippet_pool = list(snippet_pool)  # Copy the pool
+        random.shuffle(self.snippet_pool)  # Shuffle for randomness
+        
+        # Schedule first appearance using exponential distribution
+        self._schedule_next_appearance()
+        
+        # Assign lifetimes to all currently active subjects
+        current_time = self._elapsed_sim_seconds()
+        for agent in self._agents:
+            if getattr(agent, "role", None) == "SUBJECT" and getattr(agent, "visible", True):
+                lifetime = random.expovariate(1.0 / self.lifetime_mean_time)
+                self.subject_lifetimes[agent] = current_time + lifetime
+        
+        print(f"🏊 Dynamic pool initialized: {len(self.snippet_pool)} snippets in pool, "
+              f"{len(self.subject_lifetimes)} active subjects")
+
+    def _schedule_next_appearance(self):
+        """Schedule when the next snippet from the pool will appear."""
+        if self.snippet_pool:
+            delay = random.expovariate(1.0 / self.appearance_mean_time)
+            self.next_appearance_time = self._elapsed_sim_seconds() + delay
+        else:
+            self.next_appearance_time = None
+
+    def _spawn_subject_from_pool(self):
+        """Spawn a new subject agent from the snippet pool at a random position."""
+        if not self.snippet_pool:
+            return None
+        
+        snippet = self.snippet_pool.pop(0)
+        
+        # Import here to avoid circular imports
+        from subjects import SubjectAgent
+        
+        # Spawn the agent
+        self.batch_spawn_agents(1, SubjectAgent, images=["images/villager.png"])
+        
+        # Find the newly spawned subject and configure it
+        subjects = [a for a in self._agents if getattr(a, "role", None) == "SUBJECT"]
+        if subjects:
+            new_subject = subjects[-1]
+            new_subject.info = snippet
+            new_subject.set_visible(True)
+            
+            # Random position within environment bounds
+            env_width = self.runtime_settings["environment"]["width"]
+            env_height = self.runtime_settings["environment"]["height"]
+            x = random.uniform(50, env_width - 50)
+            y = random.uniform(50, env_height - 50)
+            new_subject.pos.update((x, y))
+            
+            # Assign lifetime
+            current_time = self._elapsed_sim_seconds()
+            lifetime = random.expovariate(1.0 / self.lifetime_mean_time)
+            self.subject_lifetimes[new_subject] = current_time + lifetime
+            
+            return new_subject
+        return None
+
+    def dynamic_pool_update(self):
+        """
+        Update the dynamic pool: check for expired subjects (disappear) and new appearances.
+        Called continuously during the simulation loop.
+        """
+        current_time = self._elapsed_sim_seconds()
+        
+        # Check for subjects whose lifetime has expired (disappearances)
+        expired_subjects = []
+        for subject, expiry_time in list(self.subject_lifetimes.items()):
+            if current_time >= expiry_time and getattr(subject, "visible", True):
+                expired_subjects.append(subject)
+        
+        # Process disappearances
+        for subject in expired_subjects:
+            subject.set_visible(False)
+            # Return snippet to the pool
+            snippet = getattr(subject, "info", "")
+            if snippet:
+                self.snippet_pool.append(snippet)
+            # Remove from lifetime tracking
+            del self.subject_lifetimes[subject]
+        
+        if expired_subjects:
+            active_count = len([a for a in self._agents if getattr(a, "role", None) == "SUBJECT" and getattr(a, "visible", True)])
+            print(f"👋 {len(expired_subjects)} subject(s) disappeared (lifetime expired). "
+                  f"Pool: {len(self.snippet_pool)}, Active: {active_count}")
+        
+        # Check for new appearances
+        if self.next_appearance_time is not None and current_time >= self.next_appearance_time:
+            new_subject = self._spawn_subject_from_pool()
+            if new_subject:
+                active_count = len([a for a in self._agents if getattr(a, "role", None) == "SUBJECT" and getattr(a, "visible", True)])
+                print(f"✨ New subject appeared from pool. Pool: {len(self.snippet_pool)}, Active: {active_count}")
+            
+            # Schedule next appearance
+            self._schedule_next_appearance()
     
     def save_experiment_data(self, plot: LivePlot):
         """Save experiment data and plot to the experiments directory"""
@@ -374,6 +490,9 @@ class Environment(Simulation):
                     "decay_count": self.decay_count,
                     "decay_probability": self.decay_probability,
                     "interval_seconds": self.visibility_interval,
+                    "initial_active_count": self.initial_active_count,
+                    "appearance_mean_time": self.appearance_mean_time,
+                    "lifetime_mean_time": self.lifetime_mean_time,
                 } if self.teleportation_enabled else {"enabled": False},
             }
  

@@ -11,7 +11,7 @@ visualization:
     update_interval_ms: 3000
 
 experiments:
-  active_profile: alpha2
+  active_profile: dynamic_pool_experiment
   profiles:
     low:
       label: low
@@ -73,6 +73,22 @@ experiments:
       environment:
         width: 750
         height: 750
+
+    # Dynamic pool experiment - subjects appear/disappear following exponential distribution
+    dynamic_pool_experiment:
+      label: dynamic_pool_experiment
+      swarm_type: self_learning
+      num_knowledge_agents: 25
+      ground_truth_key: ground_truth_2  # 20 snippets
+      environment:
+        width: 750
+        height: 750
+      information_teleportation:
+        enabled: true
+        mode: dynamic_pool
+        initial_active_count: 5       # Start with 5 active subjects
+        appearance_mean_time: 5.0     # Avg 5 seconds between new appearances
+        lifetime_mean_time: 10.0      # Avg 10 seconds lifetime per subject
 
 swarm_overrides:
   swarm_type: social_learning

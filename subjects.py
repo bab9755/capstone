@@ -1,5 +1,9 @@
 from vi import Agent
 from sensors import Actuator, Sensor
+from runtime_config import get_runtime_settings
+
+_SETTINGS = get_runtime_settings()
+_MOVEMENT_CFG = _SETTINGS.get("movement", {}) or {}
 class Subject:
     def __init__(sel, information: str, position: tuple):
         self.information = information
@@ -21,6 +25,10 @@ class SubjectAgent(Agent):
         self.info = info
         self.actuator = Actuator(self)
         self.visible = True  # Whether knowledge agents can interact with this subject
+        # Movement configuration (controls whether subjects move in the environment)
+        self._movement_enabled = bool(_MOVEMENT_CFG.get("enabled", False))
+        self._movement_speed = float(_MOVEMENT_CFG.get("speed", 1.5))
+        self._movement_angular_velocity = float(_MOVEMENT_CFG.get("angular_velocity", 5.0))
 
     def update(self):
         # Static subject: no behavior
@@ -34,6 +42,26 @@ class SubjectAgent(Agent):
             self.image.set_alpha(255 if visible else 40)
 
     def get_velocities(self):
-        return 0, 0
+        """
+        Return linear and angular velocities for subject agents.
+        - When movement is disabled, subjects remain static.
+        - When enabled, subjects perform a simple random-walk style movement,
+          similar in spirit to knowledge agents but typically slower.
+        """
+        if not self._movement_enabled:
+            return 0, 0
+
+        linear_speed = self._movement_speed
+        angular_velocity = 0.0
+
+        # If the subject is on the border, turn and speed up briefly
+        try:
+            if hasattr(self, "sensor") and self.sensor.border_collision():
+                angular_velocity = self._movement_angular_velocity
+        except Exception:
+            # If for some reason sensor is unavailable, just keep current heading
+            angular_velocity = 0.0
+
+        return linear_speed, angular_velocity
 
 

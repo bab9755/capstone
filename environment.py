@@ -16,6 +16,7 @@ from pathlib import Path
 from runtime_config import get_runtime_settings
 from datetime import datetime
 import random
+import math
 
 
 class Environment(Simulation):
@@ -43,21 +44,23 @@ class Environment(Simulation):
         # Subject visibility / information teleportation settings
         teleport_settings = self.runtime_settings.get("information_teleportation", {})
         self.teleportation_enabled = teleport_settings.get("enabled", False)
-        self.teleportation_mode = teleport_settings.get("mode", "shuffle")  # "shuffle", "decay", "probabilistic_decay", or "dynamic_pool"
+        self.teleportation_mode = teleport_settings.get("mode", "shuffle")  # "shuffle", "decay", or "dynamic_pool"
         self.subject_visibility_probability = teleport_settings.get("visibility_probability", 0.75)
         self.decay_count = teleport_settings.get("decay_count", 3)  # subjects to remove per interval (decay mode)
-        self.decay_probability = teleport_settings.get("decay_probability", 0.08)  # per-subject leave probability (probabilistic_decay)
+        self.decay_probability = teleport_settings.get("decay_probability", 0.08)  # legacy per-subject leave probability
         self.visibility_interval = teleport_settings.get("interval_seconds", 5.0)
         self.next_visibility_time = self.visibility_interval
         
-        # Dynamic pool mode settings
+        # Dynamic pool / continuous decay mode settings
         self.initial_active_count = teleport_settings.get("initial_active_count", 5)
         self.appearance_mean_time = teleport_settings.get("appearance_mean_time", 5.0)
         self.lifetime_mean_time = teleport_settings.get("lifetime_mean_time", 10.0)
         
-        # Dynamic pool state (initialized by experiment.py if mode is dynamic_pool)
-        self.snippet_pool = []  # Inactive snippets waiting to appear
-        self.next_appearance_time = None  # When the next snippet will appear
+        # Subject lifetime state
+        # - Used by dynamic_pool mode (with snippet pool + recycling)
+        # - Also reused by decay mode (no recycling, just one-shot disappearance)
+        self.snippet_pool = []  # Inactive snippets waiting to appear (dynamic_pool only)
+        self.next_appearance_time = None  # When the next snippet will appear (dynamic_pool only)
         self.subject_lifetimes = {}  # Maps subject agent -> expiry time in seconds
 
         ground_truth_bundle = self.runtime_settings["ground_truth"]
@@ -126,18 +129,17 @@ class Environment(Simulation):
 
             elapsed_seconds = self._elapsed_sim_seconds()
             
-            # Information teleportation: modify subject visibility at intervals
+            # Information teleportation / information decay
             if self.teleportation_enabled:
                 if self.teleportation_mode == "dynamic_pool":
                     # Dynamic pool mode: continuous checking (not interval-based)
                     self.dynamic_pool_update()
+                elif self.teleportation_mode == "decay":
+                    # Continuous-time exponential decay of subjects (no reappearance)
+                    self.decay_subject_visibility()
                 elif elapsed_seconds >= self.next_visibility_time:
-                    if self.teleportation_mode == "decay":
-                        self.decay_subject_visibility()
-                    elif self.teleportation_mode == "probabilistic_decay":
-                        self.probabilistic_decay_subject_visibility()
-                    else:
-                        self.shuffle_subject_visibility()
+                    # Default "shuffle" visibility pattern at fixed intervals
+                    self.shuffle_subject_visibility()
                     self.next_visibility_time += self.visibility_interval
             
             # Check if it's time for a snapshot
@@ -269,10 +271,10 @@ class Environment(Simulation):
         
         print(f"🔀 Shuffled subject visibility: {visible_count}/{len(subjects)} visible ({self.subject_visibility_probability:.0%} probability)")
 
-    def decay_subject_visibility(self):
+    def fixed_decay_subject_visibility(self):
         """
-        Permanently hide a fixed number of visible subjects.
-        Once hidden, subjects never reappear - information decays over time.
+        Legacy fixed-count decay:
+        Permanently hide a fixed number of visible subjects at each decay step.
         """
         visible_subjects = [a for a in self._agents if getattr(a, "role", None) == "SUBJECT" and getattr(a, "visible", True)]
         if not visible_subjects:
@@ -288,27 +290,74 @@ class Environment(Simulation):
         
         remaining_visible = len(visible_subjects) - num_to_hide
         total_subjects = len([a for a in self._agents if getattr(a, "role", None) == "SUBJECT"])
-        print(f"📉 Decayed {num_to_hide} subjects: {remaining_visible}/{total_subjects} still visible")
+        print(f"📉 Fixed decay: {num_to_hide} hidden, {remaining_visible}/{total_subjects} still visible")
 
-    def probabilistic_decay_subject_visibility(self):
+    def decay_subject_visibility(self):
         """
-        Each visible subject has an independent probability of permanently leaving.
-        Creates a naturalistic exponential decay curve.
+        Continuous-time exponential decay of subject visibility, similar in spirit
+        to dynamic_pool but without reappearing snippets:
+
+        - Each SUBJECT agent is assigned an independent exponential lifetime
+          with rate λ = 1 / lifetime_mean_time (if provided).
+        - When the current simulated time exceeds that agent's expiry time,
+          the subject becomes permanently invisible.
         """
-        visible_subjects = [a for a in self._agents if getattr(a, "role", None) == "SUBJECT" and getattr(a, "visible", True)]
-        if not visible_subjects:
-            print("⚠️ No visible subjects remaining")
+        subjects = [a for a in self._agents if getattr(a, "role", None) == "SUBJECT"]
+        if not subjects:
             return
-        
-        departed = 0
-        for subject in visible_subjects:
-            if random.random() < self.decay_probability:
-                subject.set_visible(False)
-                departed += 1
-        
-        remaining_visible = len(visible_subjects) - departed
-        total_subjects = len([a for a in self._agents if getattr(a, "role", None) == "SUBJECT"])
-        print(f"🎲 Probabilistic decay: {departed} left ({self.decay_probability:.0%} chance each), {remaining_visible}/{total_subjects} still visible")
+
+        current_time = self._elapsed_sim_seconds()
+
+        # Determine exponential rate λ. Prefer explicit lifetime_mean_time;
+        # if it's not set, approximate from decay_probability / interval.
+        lambda_rate = 0.0
+        if getattr(self, "lifetime_mean_time", None) and self.lifetime_mean_time > 0:
+            lambda_rate = 1.0 / float(self.lifetime_mean_time)
+        elif self.decay_probability > 0 and self.visibility_interval > 0:
+            approx_mean = float(self.visibility_interval) / float(self.decay_probability)
+            lambda_rate = 1.0 / approx_mean
+
+        if lambda_rate <= 0.0:
+            # No meaningful decay configured
+            return
+
+        # Initialize lifetimes for any visible subject that doesn't yet have one
+        for agent in subjects:
+            if getattr(agent, "visible", True) and agent not in self.subject_lifetimes:
+                lifetime = random.expovariate(lambda_rate)
+                self.subject_lifetimes[agent] = current_time + lifetime
+
+        # Check for expired subjects
+        expired_subjects = []
+        for subject, expiry_time in list(self.subject_lifetimes.items()):
+            if (
+                getattr(subject, "role", None) == "SUBJECT"
+                and getattr(subject, "visible", True)
+                and current_time >= expiry_time
+            ):
+                expired_subjects.append(subject)
+
+        for subject in expired_subjects:
+            subject.set_visible(False)
+            # For pure decay, do not recycle snippets back into any pool
+            if subject in self.subject_lifetimes:
+                del self.subject_lifetimes[subject]
+
+        if expired_subjects:
+            remaining_visible = len(
+                [
+                    a
+                    for a in self._agents
+                    if getattr(a, "role", None) == "SUBJECT" and getattr(a, "visible", True)
+                ]
+            )
+            total_subjects = len(
+                [a for a in self._agents if getattr(a, "role", None) == "SUBJECT"]
+            )
+            print(
+                f"🎲 Probabilistic decay: {len(expired_subjects)} subject(s) disappeared "
+                f"(continuous-time exponential), {remaining_visible}/{total_subjects} still visible"
+            )
 
     def initialize_dynamic_pool(self, snippet_pool: list):
         """

@@ -96,19 +96,25 @@ def get_runtime_settings() -> Dict[str, Any]:
         if live_plot_interval_ms <= 0:
             raise ValueError("visualization.live_plot.update_interval_ms must be positive")
 
-    # Information teleportation settings (subject visibility toggling)
+    # Information teleportation settings (subject visibility / information decay)
     teleport_cfg = profile.get("information_teleportation") or {}
     teleport_enabled = teleport_cfg.get("enabled", False)
-    teleport_mode = teleport_cfg.get("mode", "shuffle")  # "shuffle", "decay", "probabilistic_decay", or "dynamic_pool"
+    teleport_mode = teleport_cfg.get("mode", "shuffle")  # "shuffle", "decay", or "dynamic_pool"
     visibility_prob = teleport_cfg.get("visibility_probability", 0.75)
-    decay_count = teleport_cfg.get("decay_count", 3)  # subjects to permanently remove per interval (decay mode)
-    decay_probability = teleport_cfg.get("decay_probability", 0.08)  # per-subject leave chance (probabilistic_decay mode)
+    decay_count = teleport_cfg.get("decay_count", 3)  # legacy fixed-count decay (unused in continuous mode)
+    decay_probability = teleport_cfg.get("decay_probability", 0.08)  # legacy per-subject leave chance (unused if lifetime_mean_time is set)
     interval_seconds = teleport_cfg.get("interval_seconds", 5.0)
     
     # Dynamic pool mode settings
     initial_active_count = teleport_cfg.get("initial_active_count", 5)  # subjects active at start
     appearance_mean_time = teleport_cfg.get("appearance_mean_time", 5.0)  # avg seconds until new subject appears
     lifetime_mean_time = teleport_cfg.get("lifetime_mean_time", 10.0)  # avg lifetime of active subject in seconds
+
+    # Subject movement settings (controls whether subject agents move around)
+    movement_cfg = profile.get("movement") or {}
+    movement_enabled = bool(movement_cfg.get("enabled", False))
+    movement_speed = movement_cfg.get("speed", 1.5)
+    movement_angular_velocity = movement_cfg.get("angular_velocity", 5.0)
 
     return {
         "profile_key": get_active_profile_key(),
@@ -131,17 +137,22 @@ def get_runtime_settings() -> Dict[str, Any]:
                 "update_interval_ms": live_plot_interval_ms,
             }
         },
+        "movement": {
+            "enabled": movement_enabled,
+            "speed": movement_speed,
+            "angular_velocity": movement_angular_velocity,
+        },
         "information_teleportation": {
             "enabled": teleport_enabled,
-            "mode": teleport_mode,  # "shuffle", "decay", "probabilistic_decay", or "dynamic_pool"
+            "mode": teleport_mode,  # "shuffle", "decay", or "dynamic_pool"
             "visibility_probability": visibility_prob,  # for shuffle mode
-            "decay_count": decay_count,  # for decay mode
-            "decay_probability": decay_probability,  # for probabilistic_decay mode
+            "decay_count": decay_count,
+            "decay_probability": decay_probability,
             "interval_seconds": interval_seconds,
-            # dynamic_pool mode settings
-            "initial_active_count": initial_active_count,  # subjects active at start
-            "appearance_mean_time": appearance_mean_time,  # avg seconds until new subject appears
-            "lifetime_mean_time": lifetime_mean_time,  # avg lifetime of active subject
+            # dynamic_pool / continuous-decay mode settings
+            "initial_active_count": initial_active_count,  # subjects active at start (dynamic_pool)
+            "appearance_mean_time": appearance_mean_time,  # avg seconds until new subject appears (dynamic_pool)
+            "lifetime_mean_time": lifetime_mean_time,  # avg lifetime of active subject (dynamic_pool / decay)
         },
     }
 

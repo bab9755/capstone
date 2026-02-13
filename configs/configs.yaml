@@ -74,6 +74,41 @@ experiments:
         width: 750
         height: 750
 
+    # Information decay experiment (probabilistic exponential-style decay of subject visibility)
+    decay:
+      label: decay
+      swarm_type: self_learning
+      num_knowledge_agents: 25
+      ground_truth_key: ground_truth_2
+      environment:
+        width: 750
+        height: 750
+      information_teleportation:
+        enabled: true
+        mode: decay   # exponential-style information decay
+        visibility_probability: 0.75
+        decay_count: 3
+        # Instead of thinking in terms of a raw per-step probability,
+        # we specify a mean lifetime (in seconds). The code derives the
+        # per-interval probability from an exponential distribution with
+        # this mean, similar to the dynamic_pool experiment.
+        lifetime_mean_time: 10.0     # average time a subject remains visible
+        interval_seconds: 5.0
+
+    # Movement experiment (subject agents move around the environment)
+    movement:
+      label: movement
+      swarm_type: self_learning
+      num_knowledge_agents: 25
+      ground_truth_key: ground_truth_2
+      environment:
+        width: 750
+        height: 750
+      movement:
+        enabled: true
+        speed: 1.5
+        angular_velocity: 5.0
+
     # Dynamic pool experiment - subjects appear/disappear following exponential distribution
     dynamic_pool_experiment:
       label: dynamic_pool_experiment

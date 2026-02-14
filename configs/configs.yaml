@@ -11,7 +11,7 @@ visualization:
     update_interval_ms: 3000
 
 experiments:
-  active_profile: movement_social_learning
+  active_profile: hybrid_decay_movement_social_learning
   profiles:
     low:
       label: low

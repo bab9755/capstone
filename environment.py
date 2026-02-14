@@ -84,11 +84,36 @@ class Environment(Simulation):
         self._experiment_saved = False
 
     def _HeadlessSimulation__update_positions(self):
+        env_w = self.runtime_settings["environment"]["width"]
+        env_h = self.runtime_settings["environment"]["height"]
         for sprite in self._agents.sprites():
             agent: Agent = sprite
 
             linear_speed, angular_velocity = agent.get_velocities()
             agent.actuator.update_position(linear_speed, angular_velocity)
+            # Bounce off walls: reflect direction and nudge back inside so agents don't get stuck
+            self._bounce_agent_off_walls(agent, env_w, env_h)
+
+    def _bounce_agent_off_walls(self, agent: Agent, env_w: float, env_h: float):
+        """If agent is outside or on the boundary, reflect its heading and clamp position inside."""
+        bounced_x = False
+        bounced_y = False
+        if agent.pos.x < 0:
+            agent.current_angle = (180 - agent.current_angle) % 360
+            agent.pos.x = 0
+            bounced_x = True
+        elif agent.pos.x > env_w:
+            agent.current_angle = (180 - agent.current_angle) % 360
+            agent.pos.x = env_w
+            bounced_x = True
+        if agent.pos.y < 0:
+            agent.current_angle = (360 - agent.current_angle) % 360
+            agent.pos.y = 0
+            bounced_y = True
+        elif agent.pos.y > env_h:
+            agent.current_angle = (360 - agent.current_angle) % 360
+            agent.pos.y = env_h
+            bounced_y = True
 
     def clean_llm_result(self, result: str) -> str:
         """Clean and validate LLM result. Returns empty string if invalid."""

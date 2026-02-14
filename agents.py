@@ -150,15 +150,10 @@ class knowledgeAgent(Agent):
             private_info=private_info
         )
         print(f"Agent {self.id} scheduled private information summarization at {pg.time.get_ticks()}ms")
-    def get_velocities(self): 
-        # at the start of the simulation this is what we get
+    def get_velocities(self):
+        # Constant forward motion; wall bounce (reflect direction) is handled in Environment._bounce_agent_off_walls
         linear_speed = 2
         angular_velocity = 0.0
-
-        if self.sensor.border_collision(): # if the agent is on the edge of the world, it randomly changes its angular velocity
-            angular_velocity = 10
-            linear_speed = 5
-
         return linear_speed, angular_velocity
 
 

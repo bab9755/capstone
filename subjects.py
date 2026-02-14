@@ -24,6 +24,7 @@ class SubjectAgent(Agent):
         self.role = "SUBJECT"
         self.info = info
         self.actuator = Actuator(self)
+        self.sensor = Sensor(self)  # For border detection so moving subjects bounce off walls
         self.visible = True  # Whether knowledge agents can interact with this subject
         # Movement configuration (controls whether subjects move in the environment)
         self._movement_enabled = bool(_MOVEMENT_CFG.get("enabled", False))
@@ -51,17 +52,9 @@ class SubjectAgent(Agent):
         if not self._movement_enabled:
             return 0, 0
 
+        # Constant forward motion; wall bounce (reflect direction) is handled in Environment._bounce_agent_off_walls
         linear_speed = self._movement_speed
         angular_velocity = 0.0
-
-        # If the subject is on the border, turn and speed up briefly
-        try:
-            if hasattr(self, "sensor") and self.sensor.border_collision():
-                angular_velocity = self._movement_angular_velocity
-        except Exception:
-            # If for some reason sensor is unavailable, just keep current heading
-            angular_velocity = 0.0
-
         return linear_speed, angular_velocity
 
 

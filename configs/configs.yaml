@@ -134,6 +134,47 @@ experiments:
         speed: 1.5
         angular_velocity: 5.0
 
+    # Hybrid: decay + movement (subjects move and disappear exponentially)
+    hybrid_decay_movement_self_learning:
+      label: hybrid_decay_movement_self_learning
+      swarm_type: self_learning
+      num_knowledge_agents: 25
+      ground_truth_key: ground_truth_3
+      environment:
+        width: 1000
+        height: 1000
+      information_teleportation:
+        enabled: true
+        mode: decay
+        visibility_probability: 0.75
+        decay_count: 3
+        lifetime_mean_time: 60.0
+        interval_seconds: 5.0
+      movement:
+        enabled: true
+        speed: 1.5
+        angular_velocity: 5.0
+
+    hybrid_decay_movement_social_learning:
+      label: hybrid_decay_movement_social_learning
+      swarm_type: social_learning
+      num_knowledge_agents: 25
+      ground_truth_key: ground_truth_3
+      environment:
+        width: 1000
+        height: 1000
+      information_teleportation:
+        enabled: true
+        mode: decay
+        visibility_probability: 0.75
+        decay_count: 3
+        lifetime_mean_time: 60.0
+        interval_seconds: 5.0
+      movement:
+        enabled: true
+        speed: 1.5
+        angular_velocity: 5.0
+
     # Dynamic pool experiment - subjects appear/disappear following exponential distribution
     dynamic_pool_experiment:
       label: dynamic_pool_experiment

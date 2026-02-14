@@ -154,7 +154,7 @@ class Environment(Simulation):
 
             elapsed_seconds = self._elapsed_sim_seconds()
             
-            # Information teleportation / information decay
+            # Information teleportation / information decay (can be combined with movement in hybrid profiles)
             if self.teleportation_enabled:
                 if self.teleportation_mode == "dynamic_pool":
                     # Dynamic pool mode: continuous checking (not interval-based)
@@ -568,6 +568,7 @@ class Environment(Simulation):
                     "appearance_mean_time": self.appearance_mean_time,
                     "lifetime_mean_time": self.lifetime_mean_time,
                 } if self.teleportation_enabled else {"enabled": False},
+                "movement": self.runtime_settings.get("movement", {}),
             }
  
             # Save JSON

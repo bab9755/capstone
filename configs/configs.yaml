@@ -11,68 +11,24 @@ visualization:
     update_interval_ms: 3000
 
 experiments:
-  active_profile: hybrid_decay_movement_social_learning
+  active_profile: baseline_social
   profiles:
-    low:
-      label: low
-      swarm_type: self_learning
-      num_knowledge_agents: 10
-      ground_truth_key: ground_truth_1
-      environment:
-        width: 500
-        height: 500
-    medium:
-      label: medium
+    baseline_self:
+      label: baseline_self
       swarm_type: self_learning
       num_knowledge_agents: 25
-      ground_truth_key: ground_truth_2
-      environment:
-        width: 750
-        height: 750
-    high:
-      label: high
-      swarm_type: self_learning
-      num_knowledge_agents: 50
       ground_truth_key: ground_truth_3
       environment:
         width: 1000
         height: 1000
-
-    alpha1:
-      label: alpha1
-      swarm_type: self_learning
-      num_knowledge_agents: 10
-      ground_truth_key: ground_truth_2
+    baseline_social:
+      label: baseline_social
+      swarm_type: social_learning
+      num_knowledge_agents: 25
+      ground_truth_key: ground_truth_3
       environment:
-        width: 750
-        height: 750
-
-    alpha2:
-      label: alpha2
-      swarm_type: self_learning
-      num_knowledge_agents: 50
-      ground_truth_key: ground_truth_2
-      environment:
-        width: 750
-        height: 750
-
-    alpha3:
-      label: alpha3
-      swarm_type: self_learning
-      num_knowledge_agents: 100
-      ground_truth_key: ground_truth_2
-      environment:
-        width: 750
-        height: 750
-
-    alpha4:
-      label: alpha4
-      swarm_type: self_learning
-      num_knowledge_agents: 50
-      ground_truth_key: ground_truth_2
-      environment:
-        width: 750
-        height: 750
+        width: 1000
+        height: 1000
 
     # Information decay experiment (probabilistic exponential-style decay of subject visibility)
     decay_self_learning:
@@ -176,20 +132,35 @@ experiments:
         angular_velocity: 5.0
 
     # Dynamic pool experiment - subjects appear/disappear following exponential distribution
-    dynamic_pool_experiment:
-      label: dynamic_pool_experiment
+    dynamic_pool_self:
+      label: dynamic_pool_self
       swarm_type: self_learning
       num_knowledge_agents: 25
-      ground_truth_key: ground_truth_2  # 20 snippets
+      ground_truth_key: ground_truth_3  # 20 snippets
       environment:
-        width: 750
-        height: 750
+        width: 1000
+        height: 1000
       information_teleportation:
         enabled: true
         mode: dynamic_pool
         initial_active_count: 5       # Start with 5 active subjects
         appearance_mean_time: 5.0     # Avg 5 seconds between new appearances
         lifetime_mean_time: 10.0      # Avg 10 seconds lifetime per subject
+
+    dynamic_pool_social:
+      label: dynamic_pool_social
+      swarm_type: social_learning
+      num_knowledge_agents: 25
+      ground_truth_key: ground_truth_3
+      environment:
+        width: 1000
+        height: 1000
+      information_teleportation:
+        enabled: true
+        mode: dynamic_pool
+        initial_active_count: 5
+        appearance_mean_time: 5.0
+        lifetime_mean_time: 10.0
 
 swarm_overrides:
   swarm_type: social_learning

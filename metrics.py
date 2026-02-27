@@ -107,11 +107,141 @@ def compute_score(agent_summary: str, gt: str, threshold: float = 0.5) -> dict:
     
     sim_matrix = util.cos_sim(summary_embeds, gt_embeds)  # shape [n_summary, n_gt]
 
-    best_scores_per_fact, _ = torch.max(sim_matrix, dim=0)
+    best_scores_per_fact, _ = torch.max(sim_matrix, dim=1)
 
     average_raw_score = torch.mean(best_scores_per_fact).item()
     recall_score = torch.sum(best_scores_per_fact > threshold).item() / len(gt_sents)
     return average_raw_score
+
+
+def compute_similarity_matrix(agent_summary: str, gt_facts) -> dict:
+    """
+    Compute the full cosine similarity matrix between each sentence in the
+    agent's summary and each ground-truth fact.
+
+    Returns a dict with:
+      - matrix: list of lists  (shape [n_summary_sents, n_gt_facts])
+      - best_per_fact: best similarity for each GT fact (column-wise max)
+      - gt_facts: list of GT fact strings  (column labels)
+      - summary_sentences: list of summary sentence strings (row labels)
+    """
+    if isinstance(gt_facts, str):
+        gt_facts = sent_tokenize(gt_facts)
+
+    summary_sents = sent_tokenize(agent_summary) if isinstance(agent_summary, str) else list(agent_summary)
+    summary_sents = [s.strip() for s in summary_sents if s.strip()]
+
+    if not summary_sents or not gt_facts:
+        return {
+            "matrix": [],
+            "best_per_fact": [],
+            "gt_facts": gt_facts if isinstance(gt_facts, list) else [],
+            "summary_sentences": summary_sents,
+        }
+
+    gt_embeds = _model.encode(gt_facts, convert_to_tensor=True, show_progress_bar=False)
+    summary_embeds = _model.encode(summary_sents, convert_to_tensor=True, show_progress_bar=False)
+
+    sim_matrix = util.cos_sim(summary_embeds, gt_embeds)  # [n_summary_sents, n_gt_facts]
+
+    best_per_fact, _ = torch.max(sim_matrix, dim=0)
+
+    return {
+        "matrix": sim_matrix.cpu().tolist(),
+        "best_per_fact": best_per_fact.cpu().tolist(),
+        "gt_facts": gt_facts,
+        "summary_sentences": summary_sents,
+    }
+
+
+import matplotlib.pyplot as plt
+import textwrap
+from pathlib import Path
+
+
+def _truncate(text: str, max_chars: int = 80) -> str:
+    """Truncate to max_chars on a word boundary, adding ellipsis if needed."""
+    text = text.strip()
+    if len(text) <= max_chars:
+        return text
+    cut = text[:max_chars].rsplit(" ", 1)[0]
+    return cut + " …"
+
+
+def save_similarity_heatmap(sim_data: dict, save_path, agent_id: str = "", metric_label: str = "Cosine Similarity"):
+    """
+    Render the similarity matrix as an annotated heatmap and save to disk.
+
+    Parameters
+    ----------
+    sim_data : dict returned by compute_similarity_matrix() or compute_bm25_matrix()
+    save_path : str or Path — output PNG file path
+    agent_id : str — used in the plot title
+    metric_label : str — label for the colorbar and title (e.g. "Cosine Similarity", "BM25 Score")
+    """
+    matrix = sim_data.get("matrix", [])
+    gt_facts = sim_data.get("gt_facts", [])
+    summary_sents = sim_data.get("summary_sentences", [])
+
+    if not matrix or not gt_facts or not summary_sents:
+        return
+
+    mat = np.array(matrix)
+    n_rows, n_cols = mat.shape
+
+    row_labels = [f"S{i+1}:  {_truncate(s, 72)}" for i, s in enumerate(summary_sents)]
+    col_labels = [f"F{j+1}:  {_truncate(f, 72)}" for j, f in enumerate(gt_facts)]
+
+    cell_h = max(0.7, min(1.2, 10.0 / n_rows))
+    cell_w = max(1.4, min(2.2, 18.0 / n_cols))
+    fig_w = max(10, n_cols * cell_w + 6)
+    fig_h = max(5, n_rows * cell_h + 4)
+
+    plt.style.use("dark_background")
+    fig, ax = plt.subplots(figsize=(fig_w, fig_h), facecolor="#0d1117")
+    ax.set_facecolor("#0d1117")
+
+    from matplotlib.colors import LinearSegmentedColormap
+    cmap = LinearSegmentedColormap.from_list(
+        "blue_red", ["#1e3a5f", "#3b7dd8", "#f0f0f0", "#e8644a", "#c0392b"]
+    )
+    im = ax.imshow(mat, cmap=cmap, aspect="auto", vmin=0, vmax=1)
+
+    for i in range(n_rows):
+        for j in range(n_cols):
+            val = mat[i, j]
+            color = "white" if val < 0.35 or val > 0.75 else "#1a1a2e"
+            ax.text(j, i, f"{val:.2f}", ha="center", va="center",
+                    fontsize=max(7, min(10, 120 // max(n_rows, n_cols))),
+                    color=color, fontweight="bold")
+
+    ax.set_xticks(range(n_cols))
+    ax.set_xticklabels(col_labels, rotation=40, ha="right", fontsize=7.5, color="#c9d1d9")
+    ax.set_yticks(range(n_rows))
+    ax.set_yticklabels(row_labels, fontsize=7.5, color="#c9d1d9")
+
+    ax.set_xlabel("Ground Truth Facts", fontsize=11, color="#c9d1d9", labelpad=10)
+    ax.set_ylabel("Agent Summary Sentences", fontsize=11, color="#c9d1d9", labelpad=10)
+
+    title = f"{metric_label} Matrix — Agent {agent_id}" if agent_id else f"{metric_label} Matrix"
+    ax.set_title(title, fontsize=14, color="#ffffff", fontweight="bold", pad=12)
+
+    best = sim_data.get("best_per_fact", [])
+    if best:
+        subtitle = f"Best-per-fact avg: {np.mean(best):.3f}  |  Covered (>0.5): {sum(1 for b in best if b > 0.5)}/{len(best)}"
+        ax.text(0.5, 1.02, subtitle, transform=ax.transAxes,
+                fontsize=9, color="#8b949e", ha="center", va="bottom")
+
+    cbar = fig.colorbar(im, ax=ax, fraction=0.025, pad=0.04)
+    cbar.set_label(metric_label, fontsize=10, color="#c9d1d9")
+    cbar.ax.tick_params(colors="#8b949e", labelsize=8)
+
+    for spine in ax.spines.values():
+        spine.set_visible(False)
+
+    plt.tight_layout()
+    plt.savefig(save_path, dpi=150, facecolor="#0d1117", edgecolor="none", bbox_inches="tight")
+    plt.close(fig)
 
 from nltk.tokenize import word_tokenize
 from sentence_transformers import SentenceTransformer, util
@@ -148,6 +278,59 @@ def _bm25_score(gt_sents, sum_sents):
     # Map raw BM25 scores into (0, 1) for compatixbility with the combined metric.
     normalized = [float(1.0 / (1.0 + np.exp(-score))) for score in best]
     return float(np.mean(normalized))
+
+
+def compute_bm25_matrix(agent_summary: str, gt_facts) -> dict:
+    """
+    Compute the full BM25 score matrix between each summary sentence and
+    each ground-truth fact, with sigmoid normalization into (0, 1).
+
+    Returns a dict with:
+      - matrix: list of lists  (shape [n_summary_sents, n_gt_facts])
+      - best_per_fact: best normalized score per GT fact (column-wise max)
+      - gt_facts: list of GT fact strings  (column labels)
+      - summary_sentences: list of summary sentence strings (row labels)
+    """
+    if isinstance(gt_facts, str):
+        gt_facts = sent_tokenize(gt_facts)
+
+    summary_sents = sent_tokenize(agent_summary) if isinstance(agent_summary, str) else list(agent_summary)
+    summary_sents = [s.strip() for s in summary_sents if s.strip()]
+
+    if not summary_sents or not gt_facts:
+        return {
+            "matrix": [],
+            "best_per_fact": [],
+            "gt_facts": gt_facts if isinstance(gt_facts, list) else [],
+            "summary_sentences": summary_sents,
+        }
+
+    token_sum = [word_tokenize(s.lower()) for s in summary_sents]
+    token_gt = [word_tokenize(s.lower()) for s in gt_facts]
+
+    bm25 = BM25Okapi(token_sum)
+
+    # Build full matrix: each row is a summary sentence, each column is a GT fact.
+    # BM25 naturally scores queries against documents, so we query each GT fact
+    # against the summary-sentence corpus and transpose.
+    raw_matrix = []
+    for q in token_gt:
+        raw_matrix.append(bm25.get_scores(q).tolist())
+    # raw_matrix is [n_gt, n_summary] — transpose to [n_summary, n_gt]
+    raw_matrix = list(map(list, zip(*raw_matrix)))
+
+    sigmoid = lambda x: 1.0 / (1.0 + np.exp(-x))
+    norm_matrix = [[float(sigmoid(v)) for v in row] for row in raw_matrix]
+
+    best_per_fact = [max(norm_matrix[i][j] for i in range(len(summary_sents)))
+                     for j in range(len(gt_facts))]
+
+    return {
+        "matrix": norm_matrix,
+        "best_per_fact": best_per_fact,
+        "gt_facts": gt_facts,
+        "summary_sentences": summary_sents,
+    }
 
 # ---- main combined scorer ----
 def compute_final_score(agent_summary: str, ground_truth: str, alpha: float = 0.7) -> dict:

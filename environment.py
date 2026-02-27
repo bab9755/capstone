@@ -8,7 +8,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from llm import LLM
 import pygame as pg
-from metrics import compute_bert_score, compute_score, compute_final_score
+from metrics import compute_bert_score, compute_score, compute_final_score, compute_similarity_matrix, compute_bm25_matrix, save_similarity_heatmap
 from visualize import LivePlot
 import queue
 from concurrent.futures import ThreadPoolExecutor, Future, as_completed
@@ -518,7 +518,7 @@ class Environment(Simulation):
                     # Create timestamp -> value maps
                     data["agents"][agent_key] = {
                         "scores": {str(t): scores[i] if i < len(scores) else 0.0 for i, t in enumerate(timestamps)},
-                        "summaries": {str(t): summaries[i] if i < len(summaries) else "" for i, t in enumerate(timestamps)}
+                        "summaries": {str(t): summaries[i] if i < len(summaries) else "" for i, t in enumerate(timestamps)},
                     }
 
             base_dir = Path("experiments")
@@ -571,6 +571,32 @@ class Environment(Simulation):
                 "movement": self.runtime_settings.get("movement", {}),
             }
  
+            # Compute final similarity matrices and generate heatmap images
+            matrices_dir = run_dir / "similarity_matrices"
+            matrices_dir.mkdir(parents=True, exist_ok=True)
+            for agent_key, agent_data in data["agents"].items():
+                summaries_map = agent_data["summaries"]
+                final_summary = ""
+                for t in reversed(timestamps):
+                    s = summaries_map.get(str(t), "")
+                    if s.strip():
+                        final_summary = s
+                        break
+
+                cosine_data = compute_similarity_matrix(final_summary, self.ground_truth_facts)
+                bm25_data = compute_bm25_matrix(final_summary, self.ground_truth_facts)
+                agent_data["final_cosine_matrix"] = cosine_data
+                agent_data["final_bm25_matrix"] = bm25_data
+
+                try:
+                    cosine_path = matrices_dir / f"agent_{agent_key}_cosine.png"
+                    save_similarity_heatmap(cosine_data, cosine_path, agent_id=agent_key, metric_label="Cosine Similarity")
+                    bm25_path = matrices_dir / f"agent_{agent_key}_bm25.png"
+                    save_similarity_heatmap(bm25_data, bm25_path, agent_id=agent_key, metric_label="BM25 Score")
+                    print(f"Saved cosine + BM25 heatmaps for agent {agent_key}")
+                except Exception as e_hm:
+                    print(f"Failed to save heatmap for agent {agent_key}: {e_hm}")
+
             # Save JSON
             json_path = run_dir / "experiment.json"
             with open(json_path, "w", encoding="utf-8") as f:

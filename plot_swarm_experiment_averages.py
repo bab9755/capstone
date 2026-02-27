@@ -49,11 +49,32 @@ def _load_score_sequences(run_dir: Path) -> list[np.ndarray]:
         data = json.load(f)
 
     sequences: list[np.ndarray] = []
-    for key, value in data.items():
-        if key.endswith("_score"):
-            seq = np.asarray(value, dtype=float)
+    # Newer multi-agent format saved by Environment.save_experiment_data
+    # {
+    #   "timestamps": [...],
+    #   "agents": {
+    #       "0": { "scores": { "2": 0.0, "4": 0.1, ... }, ... },
+    #       ...
+    #   }
+    # }
+    if "agents" in data and "timestamps" in data:
+        timestamps = data.get("timestamps") or []
+        agents = data.get("agents") or {}
+        for _agent_id, agent_data in agents.items():
+            scores_map = (agent_data or {}).get("scores") or {}
+            scores = [scores_map.get(str(t), 0.0) for t in timestamps]
+            seq = np.asarray(scores, dtype=float)
             if seq.size:
                 sequences.append(seq)
+
+    # Legacy format with top-level *_score keys (kept for backward compatibility)
+    if not sequences:
+        for key, value in data.items():
+            if key.endswith("_score"):
+                seq = np.asarray(value, dtype=float)
+                if seq.size:
+                    sequences.append(seq)
+
     return sequences
 
 
